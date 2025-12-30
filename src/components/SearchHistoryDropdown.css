@@ -1,0 +1,139 @@
+.search-history-dropdown {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+  border: 1px solid #e5e7eb;
+  max-width: 400px;
+  overflow: hidden;
+}
+
+.search-history-section {
+  padding: 1rem;
+}
+
+.search-history-section:not(:last-child) {
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.search-history-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.75rem;
+}
+
+.search-history-header h4 {
+  margin: 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #374151;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.search-history-clear-all {
+  background: none;
+  border: none;
+  color: #6b7280;
+  font-size: 0.75rem;
+  cursor: pointer;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  transition: all 0.2s;
+}
+
+.search-history-clear-all:hover {
+  background-color: #f3f4f6;
+  color: #374151;
+}
+
+.search-history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.search-history-item {
+  display: flex;
+  align-items: center;
+  padding: 0.75rem;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: 1px solid transparent;
+}
+
+.search-history-item:hover {
+  background-color: #f8fafc;
+  border-color: #e5e7eb;
+}
+
+.search-history-content {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-width: 0;
+}
+
+.search-history-term {
+  font-size: 0.875rem;
+  color: #374151;
+  font-weight: 500;
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.search-history-time,
+.search-history-date {
+  font-size: 0.75rem;
+  color: #6b7280;
+  margin-left: 0.75rem;
+  flex-shrink: 0;
+}
+
+.search-history-remove {
+  background: none;
+  border: none;
+  color: #9ca3af;
+  font-size: 1.25rem;
+  cursor: pointer;
+  padding: 0.25rem;
+  margin-left: 0.5rem;
+  border-radius: 4px;
+  line-height: 1;
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+
+.search-history-remove:hover {
+  background-color: #fee2e2;
+  color: #dc2626;
+}
+
+.search-history-item:hover .search-history-remove {
+  opacity: 1;
+}
+
+/* Mobile responsive */
+@media (max-width: 480px) {
+  .search-history-dropdown {
+    max-width: 100%;
+    margin: 0 1rem;
+  }
+
+  .search-history-item {
+    padding: 0.625rem;
+  }
+
+  .search-history-term {
+    font-size: 0.8125rem;
+  }
+
+  .search-history-time,
+  .search-history-date {
+    font-size: 0.6875rem;
+  }
+}

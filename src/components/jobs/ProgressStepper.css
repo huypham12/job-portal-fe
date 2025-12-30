@@ -1,0 +1,187 @@
+.progress-stepper {
+  display: flex;
+  align-items: flex-start;
+  gap: 0;
+  padding: 24px 0;
+  overflow-x: auto;
+}
+
+.step-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 120px;
+  position: relative;
+}
+
+.step-indicator {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  font-weight: 600;
+  font-size: 14px;
+  transition: all 0.3s ease;
+  flex-shrink: 0;
+  position: relative;
+  z-index: 2;
+  padding: 0 !important;
+  margin: 0 !important;
+  margin-bottom: 0 !important;
+  padding-bottom: 0 !important;
+  border-bottom: none !important;
+  box-sizing: border-box;
+}
+
+.step-number {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 100%;
+  height: 100%;
+  margin: 0 !important;
+  padding: 0 !important;
+  line-height: 1 !important;
+  font-size: 14px;
+  font-weight: 600;
+  text-align: center;
+  transform: none !important;
+  transition: none;
+  /* Đảm bảo số được căn giữa hoàn hảo */
+  vertical-align: middle;
+  /* Điều chỉnh cho font rendering */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.step-indicator svg {
+  width: 20px;
+  height: 20px;
+}
+
+/* Step Status Styles */
+.step-pending .step-indicator {
+  background: #f1f5f9;
+  color: #94a3b8;
+  border: 2px solid #e2e8f0;
+}
+
+.step-active .step-indicator {
+  background: linear-gradient(180deg, #4f8bff, #2f64f2);
+  color: #fff;
+  border: 2px solid #3b6ee7;
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1);
+  transform: scale(1.1);
+  /* Đảm bảo số vẫn căn giữa khi scale */
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.step-active .step-number {
+  /* Đảm bảo số không bị ảnh hưởng bởi transform scale */
+  transform: none !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.step-completed .step-indicator {
+  background: linear-gradient(180deg, #22c55e, #16a34a);
+  color: #fff;
+  border: 2px solid #16a34a;
+}
+
+.step-content {
+  text-align: center;
+  max-width: 150px;
+}
+
+.step-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #0f172a;
+  margin-bottom: 4px;
+  line-height: 1.3;
+}
+
+.step-pending .step-title {
+  color: #94a3b8;
+}
+
+.step-active .step-title {
+  color: #2563eb;
+}
+
+.step-completed .step-title {
+  color: #16a34a;
+}
+
+.step-description {
+  font-size: 11px;
+  color: #64748b;
+  line-height: 1.4;
+}
+
+.step-connector {
+  flex: 1;
+  height: 2px;
+  margin: 0 8px;
+  margin-top: 19px;
+  background: #e2e8f0;
+  transition: all 0.3s ease;
+  position: relative;
+  z-index: 1;
+}
+
+.connector-completed {
+  background: linear-gradient(90deg, #22c55e, #16a34a);
+}
+
+.connector-active {
+  background: linear-gradient(90deg, #22c55e 50%, #e2e8f0 50%);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .progress-stepper {
+    padding: 16px 0;
+  }
+
+  .step-item {
+    min-width: 100px;
+  }
+
+  .step-indicator {
+    width: 32px;
+    height: 32px;
+    font-size: 12px;
+  }
+
+  .step-number {
+    font-size: 12px;
+    transform: none;
+  }
+
+  .step-indicator svg {
+    width: 16px;
+    height: 16px;
+  }
+
+  .step-title {
+    font-size: 12px;
+  }
+
+  .step-description {
+    display: none;
+  }
+
+  .step-connector {
+    margin-top: 15px;
+  }
+}
+

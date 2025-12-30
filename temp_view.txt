@@ -1,0 +1,510 @@
+   3: import './RecruiterCompany.css'
+   4: 
+   6:   if (Array.isArray(payload)) return payload
+   7:   if (Array.isArray(payload?.data)) return payload.data
+   8:   if (Array.isArray(payload?.items)) return payload.items
+   9:   return []
+  11: 
+  13:   const [company, setCompany] = useState(null)
+  14:   const [details, setDetails] = useState(null)
+  15:   const [benefits, setBenefits] = useState([])
+  16:   const [loading, setLoading] = useState(true)
+  17:   const [error, setError] = useState('')
+  18: 
+  20:     let active = true
+  22:       setLoading(true)
+  23:       setError('')
+  25:         const companyData = await companyApi.getMyCompany()
+  26:         let detailData = null
+  28:           detailData = await companyApi.getMyCompanyDetails()
+  30:           if (err?.status !== 404) throw err
+  32:         let benefitData = []
+  34:           benefitData = await companyApi.listMyBenefits()
+  36:           if (err?.status !== 404) throw err
+  38: 
+  39:         if (!active) return
+  40:         setCompany(companyData)
+  42:         setBenefits(normalizeBenefits(benefitData))
+  44:         if (!active) return
+  45:         setError(err?.message || 'Khong the tai du lieu cong ty.')
+  47:         if (active) setLoading(false)
+  50:     load()
+  52:       active = false
+  55: 
+  56:   const headerCompanyName = company?.name || 'Cong ty cua ban'
+  57: 
+  59:     return (
+  60:       <div className="recruiter-company-page">
+  61:         <div className="loading-block">
+  62:           <div className="spinner" aria-hidden />
+  63:           <div>Dang tai ho so cong ty...</div>
+  64:         </div>
+  65:       </div>
+  66:     )
+  68: 
+  70:     return (
+  71:       <div className="recruiter-company-page">
+  72:         <div className="error-block">
+  73:           <h3>Co loi xay ra</h3>
+  76:         </div>
+  77:       </div>
+  78:     )
+  80: 
+  81:   const statusInfo = getStatusInfo(company)
+  82: 
+  83:   return (
+  84:     <div className="recruiter-company-page">
+  85:       <div className="page-header">
+  86:         <div>
+  87:           <p className="eyebrow-text">Ho so cong ty</p>
+  89:           <p className="muted">Quan ly thong tin doanh nghiep, chi tiet va cac phuc loi noi bat.</p>
+  90:         </div>
+  92:           <span className="dot" />
+  94:         </div>
+  95:       </div>
+  96: 
+  97:       <div className="recruiter-company-layout">
+  98:         <div className="recruiter-company-layout__main">
+ 100:           <CompanyDetailsCard
+ 104:           />
+ 105:         </div>
+ 106:         <aside className="recruiter-company-layout__side">
+ 108:           <CompanyBenefitsSection
+ 111:           />
+ 112:         </aside>
+ 113:       </div>
+ 114:     </div>
+ 115:   )
+ 117: 
+ 119:   const info = getStatusInfo(company)
+ 120: 
+ 121:   return (
+ 122:     <div className="company-card status-card">
+ 123:       <div className="card-header">
+ 124:         <div>
+ 125:           <h3>Trạng thái hồ sơ</h3>
+ 126:           <p className="muted">Theo dõi tiến trình xét duyệt doanh nghiệp.</p>
+ 127:         </div>
+ 128:       </div>
+ 129:       <div className="status-row single">
+ 131:           <span className="dot" />
+ 133:         </span>
+ 134:       </div>
+ 139:           Xem trang công ty
+ 140:         </button>
+ 142:     </div>
+ 143:   )
+ 145: 
+ 147:   const [editing, setEditing] = useState(false)
+ 148:   const [form, setForm] = useState(buildCompanyForm(company))
+ 149:   const [saving, setSaving] = useState(false)
+ 150:   const [error, setError] = useState('')
+ 151: 
+ 153:     setForm(buildCompanyForm(company))
+ 155: 
+ 160: 
+ 162:     e.preventDefault()
+ 165:       const trimmed = typeof val === 'string' ? val.trim() : val
+ 166:       if (trimmed === '' || trimmed === null || trimmed === undefined) return
+ 168:         const parsed = parseInt(trimmed, 10)
+ 169:         if (!Number.isNaN(parsed)) payload[key] = parsed
+ 171:         payload[key] = trimmed
+ 175:       setError('Nhap it nhat mot truong de cap nhat.')
+ 176:       return
+ 178:     setSaving(true)
+ 179:     setError('')
+ 181:       const updated = await companyApi.updateMyCompany(payload)
+ 182:       onUpdated?.(updated)
+ 183:       setEditing(false)
+ 185:       setError(err?.message || 'Khong the cap nhat thong tin cong ty.')
+ 187:       setSaving(false)
+ 190: 
+ 191:   const logoSrc = company?.logo_url
+ 192: 
+ 193:   return (
+ 194:     <div className="company-card">
+ 195:       <div className="card-header">
+ 196:         <div className="card-title">
+ 197:           <div className="avatar-lg">
+ 199:           </div>
+ 200:           <div>
+ 203:           </div>
+ 204:         </div>
+ 208:       </div>
+ 209: 
+ 212:           <div className="field">
+ 213:             <label>Ten cong ty</label>
+ 215:           </div>
+ 216:           <div className="field">
+ 217:             <label>Mo ta</label>
+ 219:           </div>
+ 220:           <div className="field">
+ 221:             <label>Logo URL</label>
+ 223:           </div>
+ 224:           <div className="field">
+ 225:             <label>Quy mo</label>
+ 227:           </div>
+ 228:           <div className="field">
+ 229:             <label>Email lien he</label>
+ 231:           </div>
+ 232:           <div className="field">
+ 233:             <label>So dien thoai</label>
+ 235:           </div>
+ 236:           <div className="field field-span">
+ 237:             <label>Dia chi</label>
+ 239:           </div>
+ 240:           <div className="field">
+ 241:             <label>LinkedIn</label>
+ 243:           </div>
+ 244:           <div className="field">
+ 245:             <label>Facebook</label>
+ 247:           </div>
+ 248:           <div className="field">
+ 249:             <label>Twitter</label>
+ 251:           </div>
+ 252:           <div className="field">
+ 253:             <label>Ma so thue</label>
+ 255:           </div>
+ 256:           <div className="field">
+ 257:             <label>Giay phep kinh doanh</label>
+ 259:           </div>
+ 261:           <div className="form-actions split">
+ 263:             <div className="action-gap" />
+ 265:           </div>
+ 266:         </form>
+ 267:       ) : (
+ 268:         <div className="info-grid">
+ 273:           <InfoRow
+ 274:             label="Lien ket"
+ 276:               <div className="link-row">
+ 281:               </div>
+ 283:           />
+ 286:         </div>
+ 288:     </div>
+ 289:   )
+ 291: 
+ 293:   const [editing, setEditing] = useState(false)
+ 294:   const [form, setForm] = useState(buildDetailsForm(details))
+ 295:   const [saving, setSaving] = useState(false)
+ 296:   const [error, setError] = useState('')
+ 297:   const [cultureExpanded, setCultureExpanded] = useState(false)
+ 298: 
+ 300:     setForm(buildDetailsForm(details))
+ 302: 
+ 307: 
+ 309:     e.preventDefault()
+ 312:       const trimmed = typeof val === 'string' ? val.trim() : val
+ 313:       if (trimmed === '') return
+ 315:         const parsed = parseInt(trimmed, 10)
+ 316:         if (!Number.isNaN(parsed)) payload[key] = parsed
+ 318:         payload[key] = trimmed
+ 322:       setError('Nhap it nhat mot truong chi tiet.')
+ 323:       return
+ 325:     setSaving(true)
+ 326:     setError('')
+ 328:       let saved
+ 330:         saved = await companyApi.updateMyCompanyDetails(payload)
+ 332:         saved = await companyApi.createMyCompanyDetails(payload)
+ 334:       onSaved?.(saved)
+ 335:       setEditing(false)
+ 337:       setError(err?.message || 'Khong the luu chi tiet.')
+ 339:       setSaving(false)
+ 342: 
+ 344:     if (!window.confirm('Ban chac chan muon xoa chi tiet cong ty?')) return
+ 346:       await companyApi.deleteMyCompanyDetails()
+ 347:       onDeleted?.()
+ 348:       setForm(buildDetailsForm(null))
+ 349:       setEditing(false)
+ 351:       setError(err?.message || 'Khong the xoa chi tiet.')
+ 354: 
+ 355:   return (
+ 356:     <div className="company-card company-details-card">
+ 357:       <div className="card-header">
+ 358:         <div>
+ 359:           <h3>Thong tin chi tiet</h3>
+ 360:           <p className="muted">Thong tin ve linh vuc, quy mo va cap nhat ho so.</p>
+ 361:         </div>
+ 363:           <div className="button-row">
+ 367:             </button>
+ 368:           </div>
+ 370:       </div>
+ 371: 
+ 374:           <div className="field">
+ 375:             <label>Nganh nghe</label>
+ 377:           </div>
+ 378:           <div className="field">
+ 379:             <label>Nam thanh lap</label>
+ 381:           </div>
+ 382:           <div className="field">
+ 383:             <label>Nhan su toi thieu</label>
+ 385:           </div>
+ 386:           <div className="field">
+ 387:             <label>Nhan su toi da</label>
+ 389:           </div>
+ 390:           <div className="field">
+ 391:             <label>Website</label>
+ 393:           </div>
+ 394:           <div className="field">
+ 395:             <label>Tru so (UUID)</label>
+ 397:           </div>
+ 398:           <div className="field">
+ 399:             <label>Loai hinh cong ty</label>
+ 401:           </div>
+ 402:           <div className="field">
+ 403:             <label>Doanh thu</label>
+ 405:           </div>
+ 406:           <div className="field">
+ 407:             <label>Ma chung khoan</label>
+ 409:           </div>
+ 410:           <div className="field field-span">
+ 411:             <label>Mo ta van hoa</label>
+ 413:           </div>
+ 415:           <div className="form-actions split">
+ 417:               Huy
+ 418:             </button>
+ 419:             <div className="action-gap" />
+ 421:           </div>
+ 422:         </form>
+ 423:       ) : details ? (
+ 424:         <div className="company-details-grid">
+ 427: 
+ 429:           <DetailItem
+ 430:             label="Nhan su"
+ 432:           />
+ 433: 
+ 436: 
+ 438:           <DetailItem
+ 439:             label="Website"
+ 441:               details?.website_url ? (
+ 444:                 </a>
+ 445:               ) : 'Chua cap nhat'
+ 447:           />
+ 448: 
+ 449:           <div className="detail-item detail-item--culture">
+ 450:             <span className="detail-label">Van hoa</span>
+ 453:             </p>
+ 457:               </button>
+ 459:           </div>
+ 460:         </div>
+ 461:       ) : (
+ 462:         <div className="empty-state">
+ 463:           <p>Chua co thong tin chi tiet cong ty.</p>
+ 465:         </div>
+ 467:     </div>
+ 468:   )
+ 470: 
+ 473:     benefit_type: '',
+ 474:     title: '',
+ 475:     description: '',
+ 476:     is_featured: false,
+ 478:   const [savingNew, setSavingNew] = useState(false)
+ 479:   const [error, setError] = useState('')
+ 480:   const [editingId, setEditingId] = useState('')
+ 481:   const [editForm, setEditForm] = useState(newBenefit)
+ 482: 
+ 484:     e.preventDefault()
+ 486:       setError('Nhap loai phuc loi va tieu de.')
+ 487:       return
+ 489:     setSavingNew(true)
+ 490:     setError('')
+ 493:         benefit_type: newBenefit.benefit_type.trim(),
+ 494:         title: newBenefit.title.trim(),
+ 495:         description: newBenefit.description.trim() || undefined,
+ 496:         is_featured: !!newBenefit.is_featured,
+ 498:       onChange?.([created, ...benefits])
+ 501:       setError(err?.message || 'Khong the them phuc loi.')
+ 503:       setSavingNew(false)
+ 506: 
+ 508:     setEditingId(item.id || item._id)
+ 510:       benefit_type: item.benefit_type || '',
+ 511:       title: item.title || '',
+ 512:       description: item.description || '',
+ 513:       is_featured: !!item.is_featured,
+ 516: 
+ 519:       setError('Nhap loai phuc loi va tieu de.')
+ 520:       return
+ 522:     setSavingNew(true)
+ 523:     setError('')
+ 526:         benefit_type: editForm.benefit_type.trim(),
+ 527:         title: editForm.title.trim(),
+ 528:         description: editForm.description.trim() || undefined,
+ 529:         is_featured: !!editForm.is_featured,
+ 532:       onChange?.(mapped)
+ 533:       setEditingId('')
+ 535:       setError(err?.message || 'Khong the cap nhat phuc loi.')
+ 537:       setSavingNew(false)
+ 540: 
+ 542:     if (!window.confirm('Xoa phuc loi nay?')) return
+ 544:       await companyApi.deleteBenefit(id)
+ 545:       onChange?.(benefits.filter((b) => String(b.id || b._id) !== String(id)))
+ 547:       setError(err?.message || 'Khong the xoa phuc loi.')
+ 550: 
+ 551:   return (
+ 552:     <div className="company-card">
+ 553:       <div className="card-header">
+ 554:         <div>
+ 555:           <h3>Phuc loi cong ty</h3>
+ 556:           <p className="muted">Them nhung diem noi bat ve phuc loi cho ung vien.</p>
+ 557:         </div>
+ 558:       </div>
+ 559: 
+ 561:         <div className="field">
+ 562:           <label>Loai phuc loi</label>
+ 563:           <input
+ 564:             name="benefit_type"
+ 567:             placeholder="Bao hiem, Nghiphep, ..."
+ 568:           />
+ 569:         </div>
+ 570:         <div className="field">
+ 571:           <label>Tieu de</label>
+ 572:           <input
+ 573:             name="title"
+ 576:             placeholder="Bao hiem suc khoe toan dien"
+ 577:           />
+ 578:         </div>
+ 579:         <div className="field field-span">
+ 580:           <label>Mo ta</label>
+ 581:           <textarea
+ 582:             name="description"
+ 586:             placeholder="Mo ta ngan ve phuc loi"
+ 587:           />
+ 588:         </div>
+ 589:         <label className="checkbox">
+ 590:           <input
+ 591:             type="checkbox"
+ 594:           />
+ 595:           <span>Danh dau noi bat</span>
+ 596:         </label>
+ 598:         <div className="form-actions">
+ 601:           </button>
+ 602:         </div>
+ 603:       </form>
+ 604: 
+ 605:       <div className="benefit-list">
+ 608:           const id = item.id || item._id
+ 609:           const isEditing = String(editingId) === String(id)
+ 610:           return (
+ 613:                 <>
+ 614:                   <div className="field">
+ 615:                     <label>Loai phuc loi</label>
+ 616:                     <input
+ 617:                       name="benefit_type"
+ 620:                     />
+ 621:                   </div>
+ 622:                   <div className="field">
+ 623:                     <label>Tieu de</label>
+ 624:                     <input
+ 625:                       name="title"
+ 628:                     />
+ 629:                   </div>
+ 630:                   <div className="field field-span">
+ 631:                     <label>Mo ta</label>
+ 632:                     <textarea
+ 633:                       name="description"
+ 637:                     />
+ 638:                   </div>
+ 639:                   <label className="checkbox">
+ 640:                     <input
+ 641:                       type="checkbox"
+ 644:                     />
+ 645:                     <span>Danh dau noi bat</span>
+ 646:                   </label>
+ 647:                   <div className="button-row">
+ 648:                     <button
+ 649:                       className="btn"
+ 650:                       type="button"
+ 652:                         setEditingId('')
+ 654:                       }
+ 655:                     >
+ 656:                       Huy
+ 657:                     </button>
+ 660:                     </button>
+ 661:                   </div>
+ 662:                 </>
+ 663:               ) : (
+ 664:                 <>
+ 665:                   <div className="benefit-head">
+ 666:                     <div>
+ 669:                     </div>
+ 670:                     <div className="button-row">
+ 673:                     </div>
+ 674:                   </div>
+ 677:                 </>
+ 679:             </div>
+ 680:           )
+ 682:       </div>
+ 683:     </div>
+ 684:   )
+ 686: 
+ 688:   return (
+ 689:     <div className="info-row">
+ 692:     </div>
+ 693:   )
+ 695: 
+ 697:   return (
+ 698:     <div className="detail-item">
+ 701:     </div>
+ 702:   )
+ 704: 
+ 709:   return 'Chua cap nhat'
+ 711: 
+ 713:   if (!details) return 'Chua cap nhat'
+ 714:   const name = details.headquarters_location?.name || details.headquarters || details.headquarters_location_name
+ 715:   if (name) return name
+ 716:   return 'Chua cap nhat'
+ 718: 
+ 720:   const isVerified = Boolean(company?.is_verified)
+ 721:   const status = (company?.status || '').toLowerCase()
+ 723:   const isActive =
+ 724:     isVerified ||
+ 725:     ['active', 'verified', 'approved', 'accept', 'confirm'].some((s) => status.includes(s))
+ 726:   const isPending = ['pending', 'review', 'wait'].some((s) => status.includes(s))
+ 727:   const isRejected = ['reject', 'deny', 'blocked'].some((s) => status.includes(s))
+ 728: 
+ 731:       kind: 'verified',
+ 732:       label: 'Đã xác minh',
+ 733:       subText: 'Hồ sơ doanh nghiệp của bạn đã được phê duyệt.',
+ 734:       conclusion: 'Bạn có thể đăng job và hiển thị công khai.',
+ 735:       publicLink: baseLink,
+ 738: 
+ 741:       kind: 'pending',
+ 742:       label: 'Đang chờ xác minh',
+ 743:       subText: 'Chúng tôi đang xem xét hồ sơ của bạn.',
+ 744:       conclusion: 'Tạm thời bạn chỉ có thể lưu job dưới dạng nháp.',
+ 745:       publicLink: null,
+ 748: 
+ 751:       kind: 'rejected',
+ 752:       label: 'Chưa xác minh',
+ 753:       subText: 'Vui lòng hoàn thiện hồ sơ để được duyệt.',
+ 754:       conclusion: 'Tạm thời bạn chỉ có thể lưu job dưới dạng nháp.',
+ 755:       publicLink: null,
+ 758: 
+ 760:     kind: 'default',
+ 761:     label: 'Chưa xác minh',
+ 762:     subText: 'Vui lòng hoàn thiện hồ sơ để được duyệt.',
+ 763:     conclusion: 'Tạm thời bạn chỉ có thể lưu job dưới dạng nháp.',
+ 764:     publicLink: null,
+ 767: 
+ 770:     name: company?.name || '',
+ 771:     description: company?.description || '',
+ 772:     logo_url: company?.logo_url || '',
+ 773:     size: company?.size ? String(company.size) : '',
+ 774:     contact_email: company?.contact_email || '',
+ 775:     contact_phone: company?.contact_phone || '',
+ 776:     contact_address: company?.contact_address || '',
+ 777:     linkedin_url: company?.linkedin_url || '',
+ 778:     facebook_url: company?.facebook_url || '',
+ 779:     twitter_url: company?.twitter_url || '',
+ 780:     tax_code: company?.tax_code || '',
+ 781:     business_license: company?.business_license || '',
+ 784: 
+ 787:     industry: details?.industry || '',
+ 788:     founded_year: details?.founded_year ? String(details.founded_year) : '',
+ 789:     employee_count_min: details?.employee_count_min ? String(details.employee_count_min) : '',
+ 790:     employee_count_max: details?.employee_count_max ? String(details.employee_count_max) : '',
+ 791:     website_url: details?.website_url || '',
+ 792:     headquarters_location_id: details?.headquarters_location_id || '',
+ 793:     company_type: details?.company_type || '',
+ 794:     revenue_range: details?.revenue_range || '',
+ 795:     stock_symbol: details?.stock_symbol || '',
+ 796:     culture_description: details?.culture_description || '',

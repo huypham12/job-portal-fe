@@ -1,0 +1,413 @@
+.company-details-page{
+  background:#f5f7fb;
+  min-height:100vh;
+  padding:24px 14px 36px;
+}
+
+.company-details-page .container{
+  max-width:1160px;
+  margin:0 auto;
+}
+
+.cd-card{
+  background:#fff;
+  border:1px solid #e2e8f0;
+  border-radius:16px;
+  padding:16px;
+  box-shadow:0 10px 30px rgba(15,23,42,0.08);
+}
+
+.header-card{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:16px;
+  margin-bottom:14px;
+}
+
+.header-left{
+  display:flex;
+  gap:14px;
+  align-items:center;
+}
+
+.header-logo{
+  width:72px;
+  height:72px;
+  border-radius:18px;
+  border:1px solid #e2e8f0;
+  background:#f8fafc;
+  display:grid;
+  place-items:center;
+  font-weight:800;
+  font-size:22px;
+  color:#2563eb;
+  overflow:hidden;
+}
+
+.header-logo img{
+  width:100%;
+  height:100%;
+  object-fit:cover;
+}
+
+.header-title-row{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  flex-wrap:wrap;
+}
+
+.header-title-row h1{
+  margin:0;
+  font-size:24px;
+  color:#0f172a;
+}
+
+.verified-badge{
+  background:#ecfdf3;
+  color:#15803d;
+  border:1px solid #bbf7d0;
+  border-radius:12px;
+  padding:4px 8px;
+  font-weight:700;
+  font-size:12px;
+}
+
+.header-meta{
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+  color:#64748b;
+  margin-top:6px;
+}
+
+.header-actions{
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
+}
+
+.btn{
+  border-radius:12px;
+  padding:10px 14px;
+  border:1px solid #e2e8f0;
+  background:#fff;
+  color:#0f172a;
+  font-weight:700;
+  cursor:pointer;
+  transition:all .2s ease;
+}
+
+.btn:hover{
+  box-shadow:0 8px 20px rgba(15,23,42,0.1);
+  transform:translateY(-1px);
+}
+
+.btn.primary{
+  background:linear-gradient(180deg,#2563eb,#1d4ed8);
+  border-color:#1d4ed8;
+  color:#fff;
+  box-shadow:0 12px 30px rgba(37,99,235,0.25);
+}
+
+.btn.ghost{
+  background:#fff;
+}
+
+.details-grid{
+  display:grid;
+  grid-template-columns:2fr 1fr;
+  gap:14px;
+  align-items:start;
+}
+
+.details-main{
+  display:flex;
+  flex-direction:column;
+  gap:14px;
+}
+
+.details-sidebar{
+  display:flex;
+  flex-direction:column;
+  gap:14px;
+}
+
+.section-head{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  margin-bottom:10px;
+}
+
+.section-head h3{
+  margin:0;
+  color:#0f172a;
+}
+
+.info-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(200px,1fr));
+  gap:12px;
+}
+
+.info-item{
+  padding:14px;
+  border:1px solid #e2e8f0;
+  border-radius:12px;
+  background:#f8fafc;
+}
+
+.info-label{
+  display:block;
+  color:#64748b;
+  font-size:14px;
+}
+
+.info-value{
+  color:#0f172a;
+  font-weight:700;
+  font-size:17px;
+  line-height:1.5;
+}
+
+.contact-list{
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+}
+
+.contact-row{
+  display:flex;
+  flex-direction:column;
+  gap:4px;
+}
+
+.link{
+  color:#2563eb;
+  font-weight:700;
+}
+
+.social-inline{
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+}
+
+.chip-link{
+  padding:6px 10px;
+  border-radius:12px;
+  border:1px solid #e2e8f0;
+  color:#2563eb;
+  background:#f8fafc;
+  font-weight:700;
+}
+
+.benefits-list{
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+}
+
+.benefit-item{
+  padding:12px;
+  border:1px solid #e2e8f0;
+  border-radius:12px;
+  background:#f8fafc;
+  display:flex;
+  justify-content:space-between;
+  gap:10px;
+  align-items:flex-start;
+}
+
+.benefit-item.featured{
+  border-color:rgba(37,99,235,0.4);
+  box-shadow:0 6px 16px rgba(37,99,235,0.12);
+}
+
+.benefit-title{
+  font-weight:700;
+  color:#0f172a;
+}
+
+.benefit-meta{
+  display:flex;
+  gap:6px;
+}
+
+.pill{
+  padding:6px 10px;
+  border-radius:999px;
+  border:1px solid #e2e8f0;
+  background:#fff;
+  font-size:12px;
+  font-weight:700;
+  color:#0f172a;
+}
+
+.pill.success{
+  background:#ecfdf3;
+  color:#15803d;
+  border-color:#bbf7d0;
+}
+
+.description-text{
+  margin:0;
+  color:#0f172a;
+  line-height:1.6;
+  white-space:pre-line;
+}
+
+.cd-card.culture-card{
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+  align-items:center;
+  text-align:center;
+  width:100%;
+  margin:0 auto;
+  padding:16px 18px;
+  border:1px solid #c7d2fe;
+  background:linear-gradient(180deg,#e0e7ff 0%,#f8fafc 100%);
+  box-shadow:0 18px 34px rgba(37,99,235,0.14);
+  border-left:4px solid #4f46e5;
+  border-radius:16px;
+}
+
+.cd-card.culture-card .description-text{
+  width:100%;
+  max-width:none;
+  font-size:15.5px;
+  line-height:1.7;
+  color:#0f172a;
+}
+
+.cd-card.culture-card .section-head h3{
+  color:#1d4ed8;
+}
+
+.cd-card.culture-card .link-btn{
+  color:#1d4ed8;
+  font-weight:700;
+}
+
+.link-btn{
+  background:none;
+  border:none;
+  padding:0;
+  color:#2563eb;
+  font-weight:700;
+  cursor:pointer;
+}
+
+.link-btn.small{
+  font-size:14px;
+}
+
+.jobs-list{
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+}
+
+.job-item{
+  border:1px solid #e2e8f0;
+  border-radius:12px;
+  padding:12px;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:10px;
+  background:#f8fafc;
+}
+
+.job-item h4{
+  margin:0 0 6px;
+  color:#0f172a;
+}
+
+.job-meta{
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+  color:#64748b;
+  font-size:14px;
+}
+
+.sidebar-card{
+  position:sticky;
+  top:14px;
+}
+
+.summary-list{
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+}
+
+.summary-item{
+  padding:10px;
+  border:1px solid #e2e8f0;
+  border-radius:12px;
+  background:#f8fafc;
+}
+
+.sidebar-actions{
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+  margin-top:12px;
+}
+
+.muted{
+  color:#64748b;
+}
+
+.state-card.error{
+  padding:16px;
+  border-radius:12px;
+  border:1px solid #fecdd3;
+  background:#fff1f2;
+  color:#b91c1c;
+  text-align:center;
+}
+
+.skeleton-card{
+  height:160px;
+  border-radius:16px;
+  background:linear-gradient(90deg,#f1f5f9 25%,#e2e8f0 50%,#f1f5f9 75%);
+  background-size:200% 100%;
+  animation:shimmer 1.4s ease infinite;
+}
+
+.skeleton-card.tall{
+  height:320px;
+}
+
+@keyframes shimmer{
+  0%{background-position:200% 0;}
+  100%{background-position:-200% 0;}
+}
+
+@media (max-width: 980px){
+  .details-grid{
+    grid-template-columns:1fr;
+  }
+  .header-card{
+    flex-direction:column;
+    align-items:flex-start;
+  }
+  .sidebar-card{
+    position:static;
+  }
+}
+
+@media (max-width: 640px){
+  .header-card{
+    padding:14px;
+  }
+  .cd-card{
+    padding:14px;
+  }
+}

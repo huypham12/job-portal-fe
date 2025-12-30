@@ -1,0 +1,91 @@
+.card-shared {
+  background: #fff;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.1);
+  transition: all 0.2s ease;
+}
+
+.card-hover:hover {
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.15);
+  transform: translateY(-2px);
+  border-color: #cbd5e1;
+}
+
+.card-clickable {
+  cursor: pointer;
+}
+
+.card-clickable:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2);
+}
+
+/* Variants */
+.card-default {
+  background: #fff;
+}
+
+.card-elevated {
+  box-shadow: 0 4px 6px rgba(15, 23, 42, 0.1);
+}
+
+.card-outlined {
+  border: 2px solid #e2e8f0;
+  box-shadow: none;
+}
+
+.card-flat {
+  background: #f8fafc;
+  border: none;
+  box-shadow: none;
+}
+
+/* Padding */
+.card-padding-none {
+  padding: 0;
+}
+
+.card-padding-small {
+  padding: 12px;
+}
+
+.card-padding-medium {
+  padding: 20px;
+}
+
+.card-padding-large {
+  padding: 24px;
+}
+
+/* Card sections */
+.card-header {
+  padding-bottom: 16px;
+  margin-bottom: 16px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.card-header:last-child {
+  margin-bottom: 0;
+  border-bottom: none;
+}
+
+.card-body {
+  /* Body content */
+}
+
+.card-footer {
+  padding-top: 16px;
+  margin-top: 16px;
+  border-top: 1px solid #e2e8f0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.card-footer:first-child {
+  margin-top: 0;
+  border-top: none;
+}
+

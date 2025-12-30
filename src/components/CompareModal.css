@@ -1,0 +1,134 @@
+.comparison-container {
+  max-height: 70vh;
+  overflow-y: auto;
+}
+
+.comparison-header {
+  display: grid;
+  grid-template-columns: 200px repeat(auto-fit, minmax(250px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+  padding-bottom: 16px;
+  border-bottom: 2px solid #e2e8f0;
+  background: #f8fafc;
+  padding: 16px;
+  border-radius: 8px;
+}
+
+.comparison-cell {
+  padding: 12px;
+  text-align: center;
+}
+
+.comparison-label-cell {
+  font-weight: 600;
+  color: #374151;
+  text-align: left;
+}
+
+.comparison-candidate-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.candidate-avatar-large {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: #e2e8f0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  font-weight: 600;
+  color: #64748b;
+  overflow: hidden;
+}
+
+.candidate-avatar-large img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.comparison-section {
+  margin-bottom: 32px;
+}
+
+.section-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #1f2937;
+  margin-bottom: 16px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.comparison-row {
+  display: grid;
+  grid-template-columns: 200px repeat(auto-fit, minmax(250px, 1fr));
+  gap: 16px;
+  margin-bottom: 8px;
+  padding: 12px;
+  background: #f9fafb;
+  border-radius: 6px;
+  border: 1px solid #f3f4f6;
+}
+
+.comparison-row:nth-child(even) {
+  background: #ffffff;
+}
+
+.comparison-row:hover {
+  background: #f3f4f6;
+}
+
+.skills-comparison {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 16px;
+}
+
+.skills-column {
+  padding: 16px;
+  background: #f9fafb;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+}
+
+.skills-column h4 {
+  margin: 0 0 12px 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #374151;
+}
+
+.skills-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .comparison-header,
+  .comparison-row {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .comparison-cell {
+    padding: 8px;
+  }
+
+  .comparison-label-cell {
+    text-align: center;
+    font-weight: 700;
+  }
+
+  .skills-comparison {
+    grid-template-columns: 1fr;
+  }
+}
