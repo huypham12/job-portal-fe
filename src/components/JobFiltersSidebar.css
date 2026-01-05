@@ -727,6 +727,108 @@
   }
 }
 
+/* Compact horizontal mode when placed in a top filter bar */
+.filter-bar .job-filters-sidebar {
+  max-width: 100%;
+  padding: 10px;
+  background: #fff;
+  border: 1px solid var(--jf-border);
+  border-radius: 12px;
+  box-shadow: 0 6px 18px rgba(15,23,42,0.06);
+  display: flex;
+  gap: 18px;
+  align-items: center;
+  overflow-x: auto;
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+}
+
+.filter-bar .job-filters-sidebar .filter-section {
+  border-top: none;
+  padding: 8px 12px;
+  min-width: 160px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: flex-start;
+  flex: 0 0 auto;
+  scroll-snap-align: start;
+}
+
+.filter-bar .job-filters-sidebar .pill-grid {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.filter-bar .job-filters-sidebar .pill {
+  white-space: nowrap;
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: #fff;
+  border: 1px solid var(--jf-border);
+  color: var(--jf-text);
+  box-shadow: 0 4px 12px rgba(15,23,42,0.04);
+}
+
+@media (max-width: 900px) {
+  .filter-bar .job-filters-sidebar {
+    padding: 8px;
+  }
+  .filter-bar .job-filters-sidebar .filter-section {
+    min-width: 120px;
+  }
+}
+
+/* Visual tuning for section headers inside compact bar */
+.filter-bar .job-filters-sidebar .section-header {
+  align-items: center;
+  gap: 8px;
+}
+.filter-bar .job-filters-sidebar .section-icon {
+  width: 36px;
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #f8fafc;
+  border-radius: 8px;
+  color: var(--jf-primary);
+  box-shadow: none;
+}
+.filter-bar .job-filters-sidebar .section-label {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--jf-text);
+}
+.filter-bar .job-filters-sidebar .section-content {
+  margin-top: 6px;
+  width: 100%;
+}
+
+/* Make salary presets more compact and visually balanced in the bar */
+.filter-bar .job-filters-sidebar .preset-buttons {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));
+  gap: 8px;
+}
+
+/* Small fade at edges to indicate overflow */
+.filter-bar {
+  position: relative;
+}
+.filter-bar::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 48px;
+  pointer-events: none;
+  background: linear-gradient(90deg, rgba(255,255,255,0), rgba(255,255,255,1));
+}
+
 /* Salary wrapper enhancements */
 .salary-wrapper{
   background:#f8fafc;

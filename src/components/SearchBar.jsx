@@ -34,6 +34,7 @@ export default function SearchBar({
   const inputRef = useRef(null)
   const dropdownRef = useRef(null)
   const historyRef = useRef(null)
+  const searchBarRef = useRef(null)
 
   // Sync internal state with external value
   useEffect(() => {
@@ -212,6 +213,30 @@ export default function SearchBar({
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
+  // Handle wheel events on search bar to scroll dropdowns instead of parent elements
+  const handleWheel = useCallback((e) => {
+    // Find the active dropdown element
+    let dropdownElement = null
+    if (showDropdown && dropdownRef.current) {
+      dropdownElement = dropdownRef.current
+    } else if (showHistory && historyRef.current) {
+      dropdownElement = historyRef.current
+    }
+
+    if (dropdownElement) {
+      const { scrollTop, scrollHeight, clientHeight } = dropdownElement
+      const canScrollUp = scrollTop > 0
+      const canScrollDown = scrollTop < scrollHeight - clientHeight
+
+      // If dropdown can scroll in the direction of the wheel event, prevent default and handle scroll
+      if ((e.deltaY > 0 && canScrollDown) || (e.deltaY < 0 && canScrollUp)) {
+        e.preventDefault()
+        e.stopPropagation()
+        dropdownElement.scrollTop += e.deltaY
+      }
+    }
+  }, [showDropdown, showHistory])
+
   // Listen for history changes
   useEffect(() => {
     const handleHistoryChange = () => {
@@ -222,8 +247,17 @@ export default function SearchBar({
     return () => window.removeEventListener('search-history-changed', handleHistoryChange)
   }, [])
 
+  // Handle wheel events on search bar container
+  useEffect(() => {
+    const searchBarElement = searchBarRef.current
+    if (searchBarElement) {
+      searchBarElement.addEventListener('wheel', handleWheel, { passive: false })
+      return () => searchBarElement.removeEventListener('wheel', handleWheel)
+    }
+  }, [handleWheel])
+
   return (
-    <div className={`search-bar ${className}`}>
+    <div ref={searchBarRef} className={`search-bar ${className}`}>
       <form onSubmit={handleSubmit} className="search-form">
         <div className="search-input-container">
           <input

@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { LocationService } from "../lib/api.js";
 import LocationSelector from "./LocationSelector.jsx";
-import SalaryRangeSlider from "./jobs/SalaryRangeSlider.jsx";
 import "./JobFiltersSidebar.css";
 
 // Icons as SVG components for better performance
@@ -166,6 +165,16 @@ export default function JobFiltersSidebar({
     };
   }, [filters.locationId, filters.location]);
 
+  // Salary presets (shared with other components)
+  const SALARY_PRESETS = [
+    { label: "Dưới 10M", min: 0, max: 10000000 },
+    { label: "10M - 20M", min: 10000000, max: 20000000 },
+    { label: "20M - 30M", min: 20000000, max: 30000000 },
+    { label: "30M - 50M", min: 30000000, max: 50000000 },
+    { label: "50M - 100M", min: 50000000, max: 100000000 },
+    { label: "Trên 100M", min: 100000000, max: 200000000 },
+  ];
+
   return (
     <aside className="job-filters-sidebar" aria-label="Job filters">
       <div className="sidebar-header">
@@ -323,16 +332,44 @@ export default function JobFiltersSidebar({
         </div>
         <div className="section-content">
           <div className="salary-wrapper">
-            <SalaryRangeSlider
-              value={{
-                min: filters.salaryMin,
-                max: filters.salaryMax,
-              }}
-              onChange={(val) => {
-                onFilterChange("salaryMin", val.min);
-                onFilterChange("salaryMax", val.max);
-              }}
-            />
+            <div
+              className="preset-buttons"
+              role="list"
+              aria-label="Khoảng lương nhanh"
+            >
+              <button
+                type="button"
+                className={`preset-btn ${
+                  !filters.salaryMin && !filters.salaryMax ? "active" : ""
+                }`}
+                onClick={() => {
+                  onFilterChange("salaryMin", null);
+                  onFilterChange("salaryMax", null);
+                }}
+                aria-pressed={!filters.salaryMin && !filters.salaryMax}
+              >
+                Tất cả
+              </button>
+              {SALARY_PRESETS.map((p, i) => {
+                const active =
+                  (filters.salaryMin || 0) === p.min &&
+                  (filters.salaryMax || 0) === p.max;
+                return (
+                  <button
+                    key={i}
+                    type="button"
+                    className={`preset-btn ${active ? "active" : ""}`}
+                    onClick={() => {
+                      onFilterChange("salaryMin", p.min);
+                      onFilterChange("salaryMax", p.max);
+                    }}
+                    aria-pressed={active}
+                  >
+                    {p.label}
+                  </button>
+                );
+              })}
+            </div>
           </div>
         </div>
       </div>

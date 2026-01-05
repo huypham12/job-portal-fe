@@ -12,7 +12,6 @@ const JobDetail = React.lazy(() => import("./pages/JobDetail.jsx"))
 const PostJob = React.lazy(() => import("./pages/PostJob.jsx"))
 const Login = React.lazy(() => import("./pages/Login.jsx"))
 const ApplyJob = React.lazy(() => import("./pages/ApplyJob.jsx"))
-const CompaniesPage = React.lazy(() => import("./pages/CompaniesPage.jsx"))
 const Register = React.lazy(() => import("./pages/Register.jsx"))
 const VerifyEmail = React.lazy(() => import("./pages/VerifyEmail.jsx"))
 const ForgotPassword = React.lazy(() => import("./pages/ForgotPassword.jsx"))
@@ -25,7 +24,6 @@ const RecruiterChangePassword = React.lazy(() => import("./pages/RecruiterChange
 const CompanyOnboardingPage = React.lazy(() => import("./pages/CompanyOnboardingPage.jsx"))
 const RecruiterCompanyPage = React.lazy(() => import("./pages/RecruiterCompanyPage.jsx"))
 const RecruiterCompanyGuard = React.lazy(() => import("./pages/RecruiterCompanyGuard.jsx"))
-const CompanyDetailsPage = React.lazy(() => import("./pages/CompanyDetailsPage.jsx"))
 const ResumesList = React.lazy(() => import("./pages/ResumesList.jsx"))
 const ResumeCreate = React.lazy(() => import("./pages/ResumeCreate.jsx"))
 const ResumeDetail = React.lazy(() => import("./pages/ResumeDetail.jsx"))
@@ -60,8 +58,6 @@ const router = createBrowserRouter(
     element: <App />,
     children: [
       { index: true, element: <Home /> },
-      { path: 'companies', element: <CompaniesPage /> },
-      { path: 'companies/:id', element: <CompanyDetailsPage /> },
       { path: 'search', element: <SearchPage /> },
       { path: 'search/:id/apply', element: (
         <RequireSeeker>

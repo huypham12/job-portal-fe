@@ -10,9 +10,11 @@
   margin-top: 8px;
   max-height: 400px;
   overflow-y: auto;
+  overflow-x: hidden;
   z-index: 1000;
   animation: slideDown 0.2s ease-out;
   transform-origin: top center;
+  pointer-events: auto;
 }
 
 @keyframes slideDown {

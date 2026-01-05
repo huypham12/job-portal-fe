@@ -12,9 +12,13 @@
 .header-top {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: center;
   margin-bottom: 2rem;
   min-height: 3rem; /* Prevent layout shift */
+}
+
+.header-content {
+  text-align: center;
 }
 
 .search-header h1 {
@@ -64,11 +68,40 @@
 
 .search-content {
   display: grid;
-  grid-template-columns: 300px 1fr;
+  grid-template-columns: 1fr;
   gap: 2rem;
   max-width: 1400px;
   margin: 0 auto;
   padding: 2rem;
+}
+
+/* Horizontal filter bar directly under header */
+.filter-bar {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 0 2rem 1rem;
+  box-sizing: border-box;
+}
+
+.filter-bar .job-filters-sidebar {
+  display: block;
+}
+
+.filter-bar .job-filters-sidebar .sidebar-header {
+  display: none; /* hide big header inside compact bar */
+}
+
+.filter-bar .job-filters-sidebar .filter-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 160px;
+  padding: 8px;
+  border: none;
+}
+
+.filter-bar .job-filters-sidebar .filter-section + .filter-section{
+  border-top: none;
 }
 
 .search-sidebar {
