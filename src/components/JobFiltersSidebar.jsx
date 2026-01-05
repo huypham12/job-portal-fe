@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { SkillAutocomplete } from './jobs/SkillAutocomplete.jsx'
 import LocationSelector from './LocationSelector.jsx'
+import SalaryRangeInput from './jobs/SalaryRangeInput.jsx'
 import './JobFiltersSidebar.css'
 
 const JOB_TYPES = [
@@ -42,8 +43,6 @@ const JOB_BENEFITS = [
 ]
 
 export default function JobFiltersSidebar({ filters, onFilterChange, showAdvancedFilters = true }) {
-  const [salaryMinInput, setSalaryMinInput] = useState(filters.salaryMin || '')
-  const [salaryMaxInput, setSalaryMaxInput] = useState(filters.salaryMax || '')
   const [remotePercentage, setRemotePercentage] = useState(filters.remotePercentageMin || 0)
 
   // Location state - parse current location filter
@@ -186,33 +185,17 @@ export default function JobFiltersSidebar({ filters, onFilterChange, showAdvance
       {/* Salary Range */}
       <div className="filter-section">
         <div className="section-label">Mức lương (VND/tháng)</div>
-        <div className="range-inputs">
-          <label className="range-field">
-            <span>Tối thiểu</span>
-            <input
-              type="number"
-              inputMode="numeric"
-              min="0"
-              step="1000000"
-              value={salaryMinInput}
-              onChange={handleSalaryMinChange}
-              placeholder="0"
-              aria-label="Mức lương tối thiểu"
-            />
-          </label>
-          <label className="range-field">
-            <span>Tối đa</span>
-            <input
-              type="number"
-              inputMode="numeric"
-              min="0"
-              step="1000000"
-              value={salaryMaxInput}
-              onChange={handleSalaryMaxChange}
-              placeholder="Không giới hạn"
-              aria-label="Mức lương tối đa"
-            />
-          </label>
+        <div className="salary-wrapper">
+          <SalaryRangeInput
+            value={{ min: filters.salaryMin || '', max: filters.salaryMax || '', currency: 'VND' }}
+            onChange={(val) => {
+              const min = val.min === '' || val.min === null ? null : Number(val.min)
+              const max = val.max === '' || val.max === null ? null : Number(val.max)
+              onFilterChange('salaryMin', min)
+              onFilterChange('salaryMax', max)
+            }}
+            showPresets={true}
+          />
         </div>
       </div>
 

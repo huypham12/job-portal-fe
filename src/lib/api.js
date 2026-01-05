@@ -234,20 +234,20 @@ export const JobService = {
     if (process.env.NODE_ENV === "development") {
       console.log("JobService.list - Filters object:", filters);
       console.log("JobService.list - Query string:", query);
-      console.log("JobService.list - Full URL:", `/api/jobs${query}`);
+      console.log("JobService.list - Full URL:", `/api/search/jobs/list${query}`);
     }
-    return api.get(`/api/jobs${query}`);
+    return api.get(`/api/search/jobs/list${query}`);
   },
   /**
    * Get featured jobs (public)
    * @returns {Promise<{data: Array}>}
    */
-  featured: () => api.get("/api/jobs/featured"),
+  featured: () => api.get("/api/search/jobs/featured"),
   /**
    * Get latest jobs (public)
    * @returns {Promise<{data: Array}>}
    */
-  latest: () => api.get("/api/jobs/latest"),
+  latest: () => api.get("/api/search/jobs/latest"),
   /**
    * Get job detail (public)
    * @param {string} id - Job ID

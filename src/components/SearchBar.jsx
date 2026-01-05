@@ -9,10 +9,12 @@ import './SearchBar.css'
 export default function SearchBar({
   value = '',
   onChange,
+  onSelectPayload, // optional callback to pass suggestion.payload to parent
   placeholder = 'Tìm kiếm...',
   loading = false,
   showSuggestions = true,
-  className = ''
+  className = '',
+  userContext = {} // { userLocation, userExperienceLevel, userSkills }
 }) {
   const [inputValue, setInputValue] = useState(value)
   const [suggestions, setSuggestions] = useState([])
@@ -51,7 +53,11 @@ export default function SearchBar({
       try {
         const response = await searchService.getSuggestions({
           q: query,
-          size: 8
+          size: 8,
+          // Thêm user context từ props
+          userLocation: userContext.userLocation,
+          userExperienceLevel: userContext.userExperienceLevel,
+          userSkills: userContext.userSkills
         })
         setSuggestions(response.suggestions || [])
         setRateLimited(false) // Clear rate limit on successful request
@@ -76,7 +82,7 @@ export default function SearchBar({
         setSuggestionLoading(false)
       }
     }, 200),
-    [rateLimited]
+    [rateLimited, userContext] // Thêm userContext vào dependencies
   )
 
   // Handle input changes
@@ -116,6 +122,14 @@ export default function SearchBar({
     setInputValue(selectedText)
     searchHistoryUtils.addToHistory(selectedText)
     onChange(selectedText)
+    // If suggestion carries structured payload (company/location/etc), forward it
+    if (suggestion && suggestion.payload && typeof onSelectPayload === 'function') {
+      try {
+        onSelectPayload(suggestion.payload)
+      } catch (e) {
+        console.warn('onSelectPayload error', e)
+      }
+    }
     setShowDropdown(false)
     setShowHistory(false)
     setSelectedIndex(-1)
@@ -140,7 +154,12 @@ export default function SearchBar({
       case 'Enter':
         e.preventDefault()
         if (selectedIndex >= 0 && suggestions[selectedIndex]) {
-          handleSuggestionSelect(suggestions[selectedIndex])
+          const s = suggestions[selectedIndex]
+          handleSuggestionSelect(s)
+          // also forward payload if present
+          if (s && s.payload && typeof onSelectPayload === 'function') {
+            try { onSelectPayload(s.payload) } catch (e) { /* ignore */ }
+          }
         } else {
           handleSubmit(e)
         }

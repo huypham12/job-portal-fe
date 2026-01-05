@@ -45,8 +45,38 @@ export default function SearchPage() {
     setFilter,
     setFilters,
     resetFilters,
+    applyFilters, // allow explicit trigger when suggestion payload selected
     goToPage
   } = useJobsSearch(initialFilters)
+
+  // Lấy user context từ search state hoặc localStorage
+  const getUserContext = useCallback(() => {
+    // Từ search state (nếu user đã set preferences)
+    const userContext = {
+      userLocation: searchState.userLocationId || searchState.location,
+      userExperienceLevel: searchState.userExperienceLevel,
+      userSkills: searchState.userSkills || []
+    }
+
+    // Hoặc từ localStorage nếu có user profile
+    const savedProfile = localStorage.getItem('user_profile')
+    if (savedProfile) {
+      try {
+        const profile = JSON.parse(savedProfile)
+        return {
+          userLocation: userContext.userLocation || profile.location,
+          userExperienceLevel: userContext.userExperienceLevel || profile.experienceLevel,
+          userSkills: userContext.userSkills.length > 0 ? userContext.userSkills : (profile.skills || [])
+        }
+      } catch (e) {
+        console.warn('Failed to parse user profile', e)
+      }
+    }
+
+    return userContext
+  }, [searchState])
+
+  const userContext = getUserContext()
 
   // Sync URL with search state
   useEffect(() => {
@@ -84,6 +114,33 @@ export default function SearchPage() {
     setFilter('q', query)
   }, [setFilter])
 
+  // Handle structured payload from suggestion (company/location/etc)
+  const handleSuggestionPayload = useCallback((payload) => {
+    if (!payload) return
+
+    // Example payload shapes: { company_id } or { location_id } or { location: { id, name } }
+    if (payload.company_id || (payload.company && payload.company.id)) {
+      const companyId = payload.company_id || payload.company.id
+      // set an arbitrary filter field for company id (backend may read company id if supported)
+      setFilter('companyId', companyId)
+    }
+
+    if (payload.location_id || (payload.location && payload.location.id)) {
+      const locId = payload.location_id || payload.location.id
+      setFilter('locationId', locId)
+      // try to set human-friendly location text if available
+      const locText = payload.location_name || (payload.location && payload.location.name)
+      if (locText) setFilter('location', locText)
+    }
+
+    // Trigger search immediately for selected payload
+    try {
+      applyFilters()
+    } catch (e) {
+      // fallback: nothing
+    }
+  }, [setFilter, applyFilters])
+
   // Handle sort changes
   const handleSortChange = useCallback((sort) => {
     setFilter('sort', sort)
@@ -119,7 +176,7 @@ export default function SearchPage() {
     }
 
     // Navigate to job detail
-    navigate(`/jobs/${job.id}`)
+    navigate(`/search/${job.id}`)
   }, [results, searchState, total, navigate])
 
   // Clear error after 5 seconds
@@ -143,6 +200,8 @@ export default function SearchPage() {
           placeholder="Tìm kiếm vị trí, công ty, kỹ năng..."
           loading={loading}
           showSuggestions={FEATURES.ENABLE_SEARCH_SUGGESTIONS}
+          onSelectPayload={handleSuggestionPayload}
+          userContext={userContext}
         />
       </div>
 

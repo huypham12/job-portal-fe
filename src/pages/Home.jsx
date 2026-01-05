@@ -119,7 +119,7 @@ export default function Home() {
     event?.preventDefault()
     const q = encodeURIComponent(kw.trim())
     const l = encodeURIComponent(loc.trim())
-    navigate(`/jobs?q=${q}&loc=${l}`)
+    navigate(`/search?q=${q}&location=${l}`)
   }
 
   return (
@@ -167,15 +167,15 @@ export default function Home() {
                 Nhà tuyển dụng quan tâm
               </button>
             </div>
-            <Link to={heroTab === 'jobs' ? '/jobs' : '/connections'} className="home-panel__link">
+            <Link to={heroTab === 'jobs' ? '/search' : '/connections'} className="home-panel__link">
               Xem tất cả
             </Link>
           </div>
 
           {heroTab === 'jobs' ? (
             <div className="home-panel__list">
-              {suggestions.map((job) => (
-                <Link to={`/jobs/${job.id}`} className="home-panel__card" key={job.id}>
+                {suggestions.map((job) => (
+                <Link to={`/search/${job.id}`} className="home-panel__card" key={job.id}>
                   <p className="home-panel__title">{job.title}</p>
                   <p className="muted">
                     {job.company} | {job.location}
@@ -209,7 +209,7 @@ export default function Home() {
                           <Link to={`/companies/${rec.id || ''}`} className="link small">
                             Xem công ty
                           </Link>
-                          <Link to={`/jobs?companyId=${rec.id || ''}`} className="link small">
+                          <Link to={`/search?companyId=${rec.id || ''}`} className="link small">
                             Xem tin tuyển dụng
                           </Link>
                         </div>

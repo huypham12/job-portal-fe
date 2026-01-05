@@ -34,7 +34,9 @@ export function loginWithGoogle(role = "seeker", profile) {
   };
   localStorage.setItem("authProvider", "google");
   localStorage.setItem("authUser", JSON.stringify(user));
-  localStorage.setItem("authRole", role);
+  // store canonical backend role names (candidate|recruiter|admin)
+  const canonical = role === "seeker" ? "candidate" : role;
+  localStorage.setItem("authRole", canonical);
   emitAuthChanged();
 }
 

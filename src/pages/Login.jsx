@@ -4,7 +4,7 @@ import { AuthClient } from '../services/authClient'
 import { loginAs, loginWithGoogle, logout, decodeJWT, getAuthToken } from '../auth/auth.js'
 
 export default function Login() {
-  const [tab, setTab] = useState('seeker') // seeker | recruiter
+  const [tab, setTab] = useState('candidate') // candidate | recruiter
   const [form, setForm] = useState({ email: '', password: '' })
   const [showPass, setShowPass] = useState(false)
   const [params] = useSearchParams()
@@ -18,7 +18,8 @@ export default function Login() {
     if (typeof role !== 'string') return fallback
     const normalized = role.toLowerCase()
     if (['recruiter'].includes(normalized)) return 'recruiter'
-    if (['candidate', 'seeker'].includes(normalized)) return 'seeker'
+    // Accept both backend 'candidate' and legacy 'seeker' strings, normalize to 'candidate'
+    if (['candidate', 'seeker'].includes(normalized)) return 'candidate'
     return fallback
   }
 
@@ -39,7 +40,7 @@ export default function Login() {
     setError('')
     setLoading(true)
     try {
-      const fallbackRole = tab === 'recruiter' ? 'recruiter' : 'seeker'
+      const fallbackRole = tab === 'recruiter' ? 'recruiter' : 'candidate'
       const response = await AuthClient.login({ email: form.email.trim(), password: form.password })
       
       // Lấy access token giống như AuthClient.login() đã làm
@@ -75,7 +76,7 @@ export default function Login() {
 
       // Yêu cầu backend trả role, nếu không có thì chặn và báo đúng thông điệp theo tab
       if (!apiRole) {
-        if (tab === 'seeker') {
+        if (tab === 'candidate') {
           setError('Bạn chưa tạo tài khoản Người tìm việc. Vui lòng đăng nhập với tư cách Nhà tuyển dụng.')
         } else {
           setError('Bạn chưa tạo tài khoản Nhà tuyển dụng. Vui lòng đăng nhập với tư cách Người tìm việc.')
@@ -85,7 +86,7 @@ export default function Login() {
         return
       }
 
-      if (tab === 'seeker' && resolvedRole !== 'seeker') {
+      if (tab === 'candidate' && resolvedRole !== 'candidate') {
         setError('Tài khoản Nhà tuyển dụng chưa tạo tài khoản Người tìm việc. Vui lòng đăng nhập với tư cách Nhà tuyển dụng.')
         logout()
         setLoading(false)

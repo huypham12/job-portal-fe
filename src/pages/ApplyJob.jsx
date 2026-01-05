@@ -36,7 +36,7 @@ export default function ApplyJob(){
             <input placeholder="Tin nhắn tới nhà tuyển dụng (tuỳ chọn)" />
           </label>
           <div style={{display:'flex', gap:10}}>
-            <Link to={`/jobs/${job.id}`} className="btn">← Xem chi tiết</Link>
+            <Link to={`/search/${job.id}`} className="btn">← Xem chi tiết</Link>
             <button type="submit" className="btn primary">Gửi ứng tuyển</button>
           </div>
         </form>

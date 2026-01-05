@@ -150,7 +150,7 @@ export default function App(){
                         <button className="btn ghost" style={{ width: '100%', textAlign: 'left', justifyContent: 'flex-start' }} onClick={() => { setMenuOpen(false); navigate('/profile') }}>
                           Hồ sơ của tôi
                         </button>
-                        {role === 'seeker' && (
+                      {role === 'candidate' && (
                           <>
                           <button className="btn ghost" style={{ width: '100%', textAlign: 'left', justifyContent: 'flex-start' }} onClick={() => { setMenuOpen(false); navigate('/resumes') }}>
                             CV của tôi
@@ -225,11 +225,11 @@ export default function App(){
             <a href="#">Giải pháp & Bảng giá</a>
           </div>
 
-          <div className="footer-col">
+            <div className="footer-col">
             <div className="footer-title">Người tìm việc</div>
             <NavLink to="/search">Tìm việc</NavLink>
             <NavLink to="/companies">Công ty</NavLink>
-            <NavLink to="/login?role=seeker">Đăng nhập</NavLink>
+            <NavLink to="/login?role=candidate">Đăng nhập</NavLink>
           </div>
 
           <div className="footer-col">

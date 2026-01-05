@@ -36,10 +36,10 @@ export default function SavedJobs() {
   const [error, setError] = useState('')
   const searchTimeoutRef = useRef(null)
 
-  // Redirect if not seeker
+  // Redirect if not candidate
   useEffect(() => {
-    if (role !== 'seeker') {
-      navigate('/login?role=seeker&redirect=/saved-jobs', { replace: true })
+    if (role !== 'candidate') {
+      navigate('/login?role=candidate&redirect=/saved-jobs', { replace: true })
     }
   }, [role, navigate])
 
@@ -60,7 +60,7 @@ export default function SavedJobs() {
   }, [keyword])
 
   const fetchSavedJobs = useCallback(async () => {
-    if (role !== 'seeker') return
+    if (role !== 'candidate') return
 
     setIsLoading(true)
     setError('')
@@ -115,7 +115,7 @@ export default function SavedJobs() {
   }, [currentPage, debouncedKeyword, sortOrder, locationId, selectedJobType, role])
 
   useEffect(() => {
-    if (role === 'seeker') {
+    if (role === 'candidate') {
       fetchSavedJobs()
     }
   }, [fetchSavedJobs, role])
@@ -142,7 +142,7 @@ export default function SavedJobs() {
     }
   }
 
-  if (role !== 'seeker') {
+  if (role !== 'candidate') {
     return null
   }
 
