@@ -46,6 +46,8 @@ const AdminLogin = React.lazy(() => import("./pages/admin/AdminLogin.jsx"))
 
 // New search and matching components
 const SearchPage = React.lazy(() => import("./pages/SearchPage.jsx"))
+const CompanyList = React.lazy(() => import("./pages/CompanyList.jsx"))
+const CompanyDetailsPage = React.lazy(() => import("./pages/CompanyDetailsPage.jsx"))
 const CandidateRecommendations = React.lazy(() => import("./pages/Recruiter/CandidateRecommendations.jsx"))
 const JobCandidates = React.lazy(() => import("./pages/Recruiter/JobCandidates.jsx"))
 
@@ -59,6 +61,8 @@ const router = createBrowserRouter(
     children: [
       { index: true, element: <Home /> },
       { path: 'search', element: <SearchPage /> },
+      { path: 'companies', element: <CompanyList /> },
+      { path: 'companies/:id', element: <CompanyDetailsPage /> },
       { path: 'search/:id/apply', element: (
         <RequireSeeker>
           <ApplyJob />

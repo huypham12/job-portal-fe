@@ -1,84 +1,108 @@
-import { useState, forwardRef } from 'react'
+import { useState, forwardRef, useEffect } from 'react'
+import { ResumeApi } from '../../services/resumeApi'
 import ProfessionalTemplate from './templates/ProfessionalTemplate'
 import TimelineTemplate from './templates/TimelineTemplate'
 import CompactTemplate from './templates/CompactTemplate'
 
-function CVPreviewComponent({ profileData, title, theme = 'professional', onClose, hideHeader = false, additionalData = {} }, ref) {
+function CVPreviewComponent({ resumeId, profileData, title, theme = 'modern', onClose, hideHeader = false, additionalData = {} }, ref) {
   const [fullscreen, setFullscreen] = useState(false)
+  const [htmlContent, setHtmlContent] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
 
-  if (!profileData) {
-    return (
-      <div className="cv-preview cv-preview--empty">
-        <p className="muted">Không có dữ liệu để preview</p>
-      </div>
-    )
-  }
+  // Use backend preview if resumeId is available, otherwise use client-side rendering
+  const useBackendPreview = !!resumeId
 
-  // Map profile data to template format
-  const sections = profileData.sections || {}
-  const personalInfo = {
-    ...(sections.personal_info?.data || {}),
-    avatar_url: (sections.personal_info?.data || {}).avatar_url || profileData.avatar_url
-  }
-  const skills = sections.skills?.items || []
-  const experiences = sections.experiences?.items || []
-  const educations = sections.educations?.items || []
-  const certifications = sections.certifications?.items || []
-  const awards = sections.awards?.items || []
+  useEffect(() => {
+    if (useBackendPreview) {
+      loadPreview()
+    }
+  }, [resumeId, theme])
 
-  // Get additional data (projects, languages, summary, references)
-  const projects = additionalData.projects || []
-  const languages = additionalData.languages || []
-
-  // summary có thể là string hoặc object { content, enabled }
-  const rawSummary = additionalData.summary
-  const summary =
-    typeof rawSummary === 'string'
-      ? rawSummary
-      : typeof rawSummary === 'object' && rawSummary !== null
-      ? rawSummary.content || ''
-      : ''
-
-  const references = additionalData.references || []
-
-  // Prepare data for template
-  const templateData = {
-    personal_info: personalInfo,
-    skills,
-    experiences,
-    educations,
-    certifications,
-    awards,
-    projects,
-    languages,
-    summary,
-    references
-  }
-
-  // Select template component based on theme
-  const renderTemplate = () => {
+  const loadPreview = async () => {
     try {
-      const validTheme = theme || 'professional'
-      switch (validTheme) {
-        case 'timeline':
-          if (TimelineTemplate) {
-            return <TimelineTemplate data={templateData} title={title} />
-          }
-          break
-        case 'compact':
-          if (CompactTemplate) {
-            return <CompactTemplate data={templateData} title={title} />
-          }
-          break
-        case 'professional':
-        default:
-          if (ProfessionalTemplate) {
-            return <ProfessionalTemplate data={templateData} title={title} />
-          }
-          break
+      setLoading(true)
+      setError('')
+      const response = await ResumeApi.previewResume(resumeId)
+
+      // The API returns HTML string directly
+      setHtmlContent(response)
+    } catch (err) {
+      console.error('Error loading preview:', err)
+      setError('Không thể tải preview. Vui lòng thử lại.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Client-side rendering logic (for create mode)
+  const renderClientSideTemplate = () => {
+    if (!profileData) {
+      return (
+        <div style={{ padding: '20px', textAlign: 'center' }}>
+          <p className="muted">Không có dữ liệu để preview</p>
+        </div>
+      )
+    }
+
+    try {
+      // Map profile data to template format
+      const sections = profileData.sections || {}
+      const personalInfo = {
+        ...(sections.personal_info?.data || {}),
+        avatar_url: (sections.personal_info?.data || {}).avatar_url || profileData.avatar_url
       }
-      // Fallback to ProfessionalTemplate
-      return <ProfessionalTemplate data={templateData} title={title} />
+      const skills = sections.skills?.items || []
+      const experiences = sections.experiences?.items || []
+      const educations = sections.educations?.items || []
+      const certifications = sections.certifications?.items || []
+      const awards = sections.awards?.items || []
+
+      // Get additional data (projects, languages, summary, references)
+      const projects = additionalData.projects || []
+      const languages = additionalData.languages || []
+
+      // summary có thể là string hoặc object { content, enabled }
+      const rawSummary = additionalData.summary
+      const summary =
+        typeof rawSummary === 'string'
+          ? rawSummary
+          : typeof rawSummary === 'object' && rawSummary !== null
+          ? rawSummary.content || ''
+          : ''
+
+      const references = additionalData.references || []
+
+      // Prepare data for template
+      const templateData = {
+        personal_info: personalInfo,
+        skills,
+        experiences,
+        educations,
+        certifications,
+        awards,
+        projects,
+        languages,
+        summary,
+        references
+      }
+
+      // Select template component based on theme
+      const validTheme = theme || 'modern'
+
+      // Map backend theme IDs to frontend template components
+      // Note: We may need to create specific components for classic and creative layouts
+      switch (validTheme) {
+        case 'classic':
+          // Classic uses header-top layout, fallback to ProfessionalTemplate for now
+          return <ProfessionalTemplate data={templateData} title={title} />
+        case 'creative':
+          // Creative uses two-column layout, fallback to ProfessionalTemplate for now
+          return <ProfessionalTemplate data={templateData} title={title} />
+        case 'modern':
+        default:
+          return <ProfessionalTemplate data={templateData} title={title} />
+      }
     } catch (error) {
       console.error('Error rendering template:', error)
       return (
@@ -87,6 +111,45 @@ function CVPreviewComponent({ profileData, title, theme = 'professional', onClos
         </div>
       )
     }
+  }
+
+  if (useBackendPreview && loading) {
+    return (
+      <div className="cv-preview cv-preview--loading">
+        <div className="cv-preview__header">
+          <h3 className="cv-preview__title">Xem trước CV</h3>
+        </div>
+        <div className="cv-preview__content" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '400px' }}>
+          <div className="spinner">Đang tải preview...</div>
+        </div>
+      </div>
+    )
+  }
+
+  if (useBackendPreview && error) {
+    return (
+      <div className="cv-preview cv-preview--error">
+        <div className="cv-preview__header">
+          <h3 className="cv-preview__title">Xem trước CV</h3>
+        </div>
+        <div className="cv-preview__content" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '400px' }}>
+          <p style={{ color: '#ef4444', textAlign: 'center' }}>{error}</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (useBackendPreview && !htmlContent) {
+    return (
+      <div className="cv-preview cv-preview--empty">
+        <div className="cv-preview__header">
+          <h3 className="cv-preview__title">Xem trước CV</h3>
+        </div>
+        <div className="cv-preview__content" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '400px' }}>
+          <p className="muted">Không có dữ liệu để preview</p>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -133,7 +196,14 @@ function CVPreviewComponent({ profileData, title, theme = 'professional', onClos
 
         <div className="cv-preview__content">
           <div className="cv-preview__document" ref={ref}>
-            {renderTemplate()}
+            {useBackendPreview ? (
+              <div
+                className="cv-preview__html-container"
+                dangerouslySetInnerHTML={{ __html: htmlContent }}
+              />
+            ) : (
+              renderClientSideTemplate()
+            )}
           </div>
         </div>
 

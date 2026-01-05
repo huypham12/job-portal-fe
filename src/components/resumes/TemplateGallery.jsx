@@ -14,38 +14,46 @@ export default function TemplateGallery({ selectedTheme, onSelectTheme, loading:
   const loadThemes = async () => {
     setLoading(true)
     setError('')
-    
-    // Hardcode 3 templates mới trong frontend, không phụ thuộc vào API
-    const frontendThemes = [
-      {
-        id: 'professional',
-        name: 'Professional',
-        description: 'Layout 2 cột đều nhau, header trên cùng, phù hợp cho corporate',
-        layout: 'header-top',
-        category: 'professional',
-        colors: { primary: '#1e293b', secondary: '#334155' }
-      },
-      {
-        id: 'timeline',
-        name: 'Timeline',
-        description: 'Layout timeline dọc với sidebar nhỏ, phù hợp cho developer/engineer',
-        layout: 'sidebar',
-        category: 'modern',
-        colors: { primary: '#1e293b', secondary: '#334155' }
-      },
-      {
-        id: 'compact',
-        name: 'Compact',
-        description: 'Layout sidebar nhỏ với spacing compact, phù hợp cho entry-level',
-        layout: 'sidebar',
-        category: 'modern',
-        colors: { primary: '#1e293b', secondary: '#334155' }
-      }
-    ]
-    
-    // Luôn sử dụng themes từ frontend
-    setThemes(frontendThemes)
+
+    try {
+      // Gọi API backend để lấy danh sách themes
+      const backendThemes = await ResumeApi.getThemes()
+      setThemes(backendThemes)
+    } catch (err) {
+      console.error('Error loading themes:', err)
+      setError('Không thể tải danh sách themes. Vui lòng thử lại.')
+
+      // Fallback: sử dụng themes từ backend constants nếu API fail
+      const fallbackThemes = [
+        {
+          id: 'modern',
+          name: 'Modern',
+          description: 'Sidebar layout với gradient background, phù hợp cho tech và startup',
+          layout: 'sidebar',
+          category: 'modern',
+          colors: { primary: '#1e293b', secondary: '#334155', text: '#1e293b', textLight: '#64748b', background: '#ffffff' }
+        },
+        {
+          id: 'classic',
+          name: 'Classic',
+          description: 'Header trên cùng với layout truyền thống, phù hợp cho corporate',
+          layout: 'header-top',
+          category: 'professional',
+          colors: { primary: '#2563eb', secondary: '#1e40af', text: '#1e293b', textLight: '#64748b', background: '#ffffff' }
+        },
+        {
+          id: 'creative',
+          name: 'Creative',
+          description: 'Layout 2 cột đều nhau với thiết kế sáng tạo, phù hợp cho designer',
+          layout: 'two-column',
+          category: 'creative',
+          colors: { primary: '#7c3aed', secondary: '#6d28d9', text: '#1e293b', textLight: '#64748b', background: '#ffffff' }
+        }
+      ]
+      setThemes(fallbackThemes)
+    } finally {
       setLoading(false)
+    }
   }
 
   if (loading || externalLoading) {

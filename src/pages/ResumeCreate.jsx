@@ -190,7 +190,7 @@ export default function ResumeCreate() {
         summary: formData.summary || '',
         references: formData.references || [],
         layout_settings: {
-          theme: formData.theme || 'professional',
+          theme: formData.theme || 'modern',
           sections_order: ['personal_info', 'skills', 'experiences', 'educations', 'certifications', 'awards', 'projects', 'languages', 'references']
         }
       }
@@ -346,7 +346,7 @@ export default function ResumeCreate() {
               {formData.method === 'profile' && profileData ? (
                 <CVPreview
                   profileData={profileData}
-                  theme={formData.theme || 'professional'}
+                  theme={formData.theme || 'modern'}
                   title={formData.title}
                   hideHeader={true}
                   additionalData={{

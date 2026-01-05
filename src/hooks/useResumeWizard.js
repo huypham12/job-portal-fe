@@ -23,7 +23,7 @@ export function useResumeWizard(initialStep = STEPS.METHOD) {
   const [formData, setFormData] = useState({
     method: 'profile', // hiện chỉ hỗ trợ tạo từ profile
     title: '',
-    theme: 'default',
+    theme: 'modern',
     isDefault: false,
     isPublic: false,
     projects: [],

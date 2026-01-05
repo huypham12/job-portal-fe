@@ -267,8 +267,9 @@ export default function ResumeCard({ resume, onSetDefault, onDelete }) {
                 />
               ) : (
                 <CVPreview
+                  resumeId={currentResume.id}
                   profileData={getProfileDataForPreview()}
-                  theme={currentResume.content?.layout_settings?.theme || 'professional'}
+                  theme={currentResume.content?.layout_settings?.theme || 'modern'}
                   title={currentResume.title}
                   onClose={() => setPreviewOpen(false)}
                   hideHeader={true}

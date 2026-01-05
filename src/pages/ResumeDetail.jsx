@@ -25,7 +25,7 @@ export default function ResumeDetail() {
 
   // Form state
   const [title, setTitle] = useState('')
-  const [selectedTheme, setSelectedTheme] = useState('default')
+  const [selectedTheme, setSelectedTheme] = useState('modern')
   const [sectionsOrder, setSectionsOrder] = useState([])
   const [projects, setProjects] = useState([])
   const [languages, setLanguages] = useState([])
@@ -45,7 +45,7 @@ export default function ResumeDetail() {
       const data = await ResumeApi.getResumeById(id)
       setResume(data)
       setTitle(data.title || '')
-      setSelectedTheme(data.content?.layout_settings?.theme || 'default')
+      setSelectedTheme(data.content?.layout_settings?.theme || 'modern')
       setSectionsOrder(data.content?.layout_settings?.sections_order || [])
       setProjects(data.content?.projects || [])
       setLanguages(data.content?.languages || [])
@@ -432,13 +432,8 @@ export default function ResumeDetail() {
       }
       
       // Map theme từ frontend sang backend format (gửi trực tiếp tên template chuẩn)
-      const themeMap = {
-        'professional': 'professional',
-        'timeline': 'timeline',
-        'compact': 'compact',
-        'default': 'professional'
-      }
-      const backendTheme = themeMap[selectedTheme] || 'professional'
+      // Prefer sending selectedTheme directly (backend uses ids: modern/classic/creative).
+      const backendTheme = selectedTheme || 'modern'
       
       // Lấy viewport width để đảm bảo backend render PDF consistent với frontend
       const viewportWidth = window.innerWidth || 1200
@@ -991,7 +986,7 @@ export default function ResumeDetail() {
                 (() => {
                   const profileData = getProfileDataForPreview()
                   const additionalData = getAdditionalDataForPreview()
-                  const previewTheme = selectedTheme || resume.content?.layout_settings?.theme || 'professional'
+                  const previewTheme = selectedTheme || resume.content?.layout_settings?.theme || 'modern'
                   
                   if (!profileData || !profileData.sections) {
                     return (
@@ -1004,12 +999,11 @@ export default function ResumeDetail() {
                   return (
                     <CVPreview
                       ref={previewRef}
-                      profileData={profileData}
+                      resumeId={id}
                       theme={previewTheme}
                       title={title || resume.title}
                       onClose={() => setPreviewOpen(false)}
                       hideHeader={true}
-                      additionalData={additionalData}
                     />
                   )
                 })()
