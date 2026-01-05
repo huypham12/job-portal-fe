@@ -525,8 +525,6 @@ export function useJobsSearch(initialFilters = {}) {
     skills: [],
     salaryMin: null,
     salaryMax: null,
-    jobCategories: [],
-    jobBenefits: [],
     remotePercentageMin: null,
     flexibleHours: null,
     sort: "relevance",
@@ -638,8 +636,6 @@ export function useJobsSearch(initialFilters = {}) {
       (searchState.skills && searchState.skills.length > 0) ||
       searchState.salaryMin ||
       searchState.salaryMax ||
-      (searchState.jobCategories && searchState.jobCategories.length > 0) ||
-      (searchState.jobBenefits && searchState.jobBenefits.length > 0) ||
       searchState.remotePercentageMin !== null ||
       searchState.flexibleHours !== null ||
       searchState.sort !== "relevance";
@@ -664,8 +660,6 @@ export function useJobsSearch(initialFilters = {}) {
     searchState.skills,
     searchState.salaryMin,
     searchState.salaryMax,
-    searchState.jobCategories,
-    searchState.jobBenefits,
     searchState.remotePercentageMin,
     searchState.flexibleHours,
     searchState.sort,
@@ -688,8 +682,6 @@ export function useJobsSearch(initialFilters = {}) {
       (searchState.skills && searchState.skills.length > 0) ||
       searchState.salaryMin ||
       searchState.salaryMax ||
-      (searchState.jobCategories && searchState.jobCategories.length > 0) ||
-      (searchState.jobBenefits && searchState.jobBenefits.length > 0) ||
       searchState.remotePercentageMin !== null ||
       searchState.flexibleHours !== null ||
       searchState.sort !== "relevance"
@@ -703,9 +695,6 @@ export function useJobsSearch(initialFilters = {}) {
     if (searchState.experienceLevel) count++;
     if (searchState.skills && searchState.skills.length > 0) count++;
     if (searchState.salaryMin || searchState.salaryMax) count++;
-    if (searchState.jobCategories && searchState.jobCategories.length > 0)
-      count++;
-    if (searchState.jobBenefits && searchState.jobBenefits.length > 0) count++;
     if (searchState.remotePercentageMin !== null) count++;
     if (searchState.flexibleHours !== null) count++;
     if (searchState.sort !== "relevance") count++;

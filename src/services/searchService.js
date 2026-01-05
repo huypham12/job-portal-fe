@@ -308,5 +308,35 @@ export const searchService = {
    */
   clearRecentSearches: () => {
     return api.del('/api/search/recent')
+  },
+
+  /**
+   * Get user's search history from backend
+   * @param {Object} options - limit and offset for pagination
+   * @returns {Promise<Object>} - { history: [], pagination: {} }
+   */
+  getSearchHistory: (options = {}) => {
+    const params = new URLSearchParams()
+    if (options.limit) params.append('limit', String(options.limit))
+    if (options.offset) params.append('offset', String(options.offset))
+    const query = params.toString()
+    return api.get(`/api/search/history${query ? `?${query}` : ''}`)
+  },
+
+  /**
+   * Clear all user's search history
+   * @returns {Promise<Object>}
+   */
+  clearSearchHistory: () => {
+    return api.del('/api/search/history')
+  },
+
+  /**
+   * Delete a specific search history entry
+   * @param {number} id - History entry ID
+   * @returns {Promise<Object>}
+   */
+  deleteSearchHistoryEntry: (id) => {
+    return api.del(`/api/search/history/${id}`)
   }
 }

@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { LocationService } from '../lib/api.js'
 import './LocationSelector.css'
-import './LocationSelector.css'
 
 export default function LocationSelector({
   selectedProvince,

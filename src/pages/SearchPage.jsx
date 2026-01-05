@@ -3,15 +3,22 @@ import { useSearchParams, useNavigate } from 'react-router-dom'
 import SearchBar from '../components/SearchBar.jsx'
 import JobList from '../components/JobList.jsx'
 import JobFiltersSidebar from '../components/JobFiltersSidebar.jsx'
+import CompanyFilters from './CompanyFilters.jsx'
+import CompanyList from './CompanyList.jsx'
 import SortSelect from '../components/SortSelect.jsx'
 import ActiveFilters from '../components/ActiveFilters.jsx'
 import { useJobsSearch } from '../hooks/useJobs.js'
+import { useCompaniesSearch } from '../hooks/useCompanies.js'
+import { searchService } from '../services/searchService.js'
 import { FEATURES, SEARCH_CONFIG } from '../config.js'
 import './SearchPage.css'
 
 export default function SearchPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const navigate = useNavigate()
+
+  // Search type state (jobs or companies)
+  const [searchType, setSearchType] = React.useState(searchParams.get('type') || 'jobs')
 
   // Initialize search state from URL params
   const initialFilters = {
@@ -21,10 +28,8 @@ export default function SearchPage() {
     jobType: searchParams.get('jobType') || '',
     experienceLevel: searchParams.get('experienceLevel') ? parseInt(searchParams.get('experienceLevel')) : null,
     skills: searchParams.getAll('skills').filter(Boolean) || [],
-    salaryMin: searchParams.get('salaryMin') ? parseInt(searchParams.get('salaryMin')) : null,
-    salaryMax: searchParams.get('salaryMax') ? parseInt(searchParams.get('salaryMax')) : null,
-    jobCategories: searchParams.getAll('jobCategories').filter(Boolean) || [],
-    jobBenefits: searchParams.getAll('jobBenefits').filter(Boolean) || [],
+    salaryMin: searchParams.get('salaryMin') ? parseInt(searchParams.get('salaryMin')) : undefined,
+    salaryMax: searchParams.get('salaryMax') ? parseInt(searchParams.get('salaryMax')) : undefined,
     remotePercentageMin: searchParams.get('remotePercentageMin') ? parseInt(searchParams.get('remotePercentageMin')) : null,
     flexibleHours: searchParams.get('flexibleHours') === 'true' ? true : searchParams.get('flexibleHours') === 'false' ? false : null,
     sort: searchParams.get('sort') || 'relevance',
@@ -32,7 +37,25 @@ export default function SearchPage() {
     size: 20
   }
 
-  // Use the new search hook
+  // Initialize company search state from URL params
+  const initialCompanyFilters = {
+    q: searchParams.get('q') || '',
+    industry: searchParams.get('industry') || '',
+    location: searchParams.get('location') || '',
+    company_type: searchParams.get('company_type') || '',
+    size_range: searchParams.get('size_range') || '',
+    has_open_jobs: searchParams.get('has_open_jobs') === 'true',
+    sort: searchParams.get('sort') || 'relevance',
+    page: parseInt(searchParams.get('page')) || 1,
+    size: 20
+  }
+
+  // Use the new search hooks
+  const jobsSearch = useJobsSearch(initialFilters)
+  const companiesSearch = useCompaniesSearch(initialCompanyFilters)
+
+  // Get current search context based on search type
+  const currentSearch = searchType === 'jobs' ? jobsSearch : companiesSearch
   const {
     searchState,
     results,
@@ -47,7 +70,30 @@ export default function SearchPage() {
     resetFilters,
     applyFilters, // allow explicit trigger when suggestion payload selected
     goToPage
-  } = useJobsSearch(initialFilters)
+  } = currentSearch
+
+  // Search history state
+  const [searchHistory, setSearchHistory] = React.useState(null)
+  const [searchHistoryLoading, setSearchHistoryLoading] = React.useState(false)
+
+  // Company search options
+  const [industryOptions, setIndustryOptions] = React.useState([{ value: '', label: 'Tất cả ngành' }])
+  const [locationOptions, setLocationOptions] = React.useState([{ value: '', label: 'Tất cả địa điểm' }])
+  const [companyTypeOptions] = React.useState([
+    { value: '', label: 'Tất cả loại hình' },
+    { value: 'Product', label: 'Product' },
+    { value: 'Outsourcing', label: 'Outsourcing' },
+    { value: 'Agency', label: 'Agency' },
+    { value: 'Hybrid', label: 'Hybrid' }
+  ])
+  const [sizeOptions] = React.useState([
+    { value: '', label: 'Tất cả quy mô' },
+    { value: '1-10', label: '1-10', min: 1, max: 10 },
+    { value: '11-50', label: '11-50', min: 11, max: 50 },
+    { value: '51-200', label: '51-200', min: 51, max: 200 },
+    { value: '201-500', label: '201-500', min: 201, max: 500 },
+    { value: '500+', label: '500+', min: 500, max: null }
+  ])
 
   // Lấy user context từ search state hoặc localStorage
   const getUserContext = useCallback(() => {
@@ -78,43 +124,134 @@ export default function SearchPage() {
 
   const userContext = getUserContext()
 
+  // Update company search options when results change
+  React.useEffect(() => {
+    if (searchType === 'companies' && companiesSearch.results.length > 0) {
+      const industries = new Set(companiesSearch.results.map((c) => c._source?.industry).filter(Boolean))
+      setIndustryOptions([{ value: '', label: 'Tất cả ngành' }, ...Array.from(industries).map((i) => ({ value: i, label: i }))])
+
+      const locationsMap = new Map()
+      companiesSearch.results.forEach((c) => {
+        const company = c._source
+        if (company?.headquarters_location) {
+          const key = company.headquarters_location
+          locationsMap.set(key, {
+            value: key,
+            label: company.headquarters_location
+          })
+        }
+      })
+      setLocationOptions([{ value: '', label: 'Tất cả địa điểm' }, ...Array.from(locationsMap.values())])
+    }
+  }, [searchType, companiesSearch.results])
+
+  // Handle search type change
+  const handleSearchTypeChange = useCallback((newType) => {
+    setSearchType(newType)
+    // Reset to page 1 when switching search type
+    if (newType === 'jobs') {
+      jobsSearch.setFilter('page', 1)
+    } else {
+      companiesSearch.setFilter('page', 1)
+    }
+  }, [jobsSearch, companiesSearch])
+
+  // Fetch search history from backend
+  React.useEffect(() => {
+    const fetchSearchHistory = async () => {
+      try {
+        setSearchHistoryLoading(true)
+        const response = await searchService.getSearchHistory({ limit: 10 })
+        setSearchHistory(response)
+      } catch (error) {
+        console.warn('Failed to fetch search history:', error)
+        // Keep searchHistory as null to fallback to localStorage
+      } finally {
+        setSearchHistoryLoading(false)
+      }
+    }
+
+    // Only fetch if user is authenticated (has userContext with userLocation)
+    if (userContext.userLocation) {
+      fetchSearchHistory()
+    }
+  }, [userContext.userLocation])
+
+  // Handle removing search history entry
+  const handleRemoveHistoryEntry = useCallback(async (historyId) => {
+    try {
+      await searchService.deleteSearchHistoryEntry(historyId)
+      // Refresh search history
+      const response = await searchService.getSearchHistory({ limit: 10 })
+      setSearchHistory(response)
+    } catch (error) {
+      console.error('Failed to delete search history entry:', error)
+    }
+  }, [])
+
+  // Handle clearing all search history
+  const handleClearAllHistory = useCallback(async () => {
+    try {
+      await searchService.clearSearchHistory()
+      setSearchHistory({ history: [], pagination: { total: 0, has_more: false } })
+    } catch (error) {
+      console.error('Failed to clear search history:', error)
+    }
+  }, [])
+
   // Sync URL with search state
   useEffect(() => {
     const params = new URLSearchParams()
 
-    // Add non-empty values to URL
-    if (searchState.q) params.set('q', searchState.q)
-    if (searchState.location) params.set('location', searchState.location)
-    if (searchState.locationId) params.set('locationId', searchState.locationId)
-    if (searchState.jobType) params.set('jobType', searchState.jobType)
-    if (searchState.experienceLevel !== null) params.set('experienceLevel', String(searchState.experienceLevel))
+    // Add search type
+    if (searchType !== 'jobs') params.set('type', searchType)
 
-    // Handle arrays (skills, categories, benefits)
-    searchState.skills.forEach(skill => params.append('skills', skill))
-    searchState.jobCategories.forEach(category => params.append('jobCategories', category))
-    searchState.jobBenefits.forEach(benefit => params.append('jobBenefits', benefit))
+    // Add search state based on type
+    if (searchType === 'jobs') {
+      // Jobs search params
+      if (jobsSearch.searchState.q) params.set('q', jobsSearch.searchState.q)
+      if (jobsSearch.searchState.location) params.set('location', jobsSearch.searchState.location)
+      if (jobsSearch.searchState.locationId) params.set('locationId', jobsSearch.searchState.locationId)
+      if (jobsSearch.searchState.jobType) params.set('jobType', jobsSearch.searchState.jobType)
+      if (jobsSearch.searchState.experienceLevel !== null) params.set('experienceLevel', String(jobsSearch.searchState.experienceLevel))
 
-    // Salary range
-    if (searchState.salaryMin !== null) params.set('salaryMin', String(searchState.salaryMin))
-    if (searchState.salaryMax !== null) params.set('salaryMax', String(searchState.salaryMax))
+      // Handle arrays (skills)
+      jobsSearch.searchState.skills.forEach(skill => params.append('skills', skill))
 
-    // Work arrangement
-    if (searchState.remotePercentageMin !== null) params.set('remotePercentageMin', String(searchState.remotePercentageMin))
-    if (searchState.flexibleHours !== null) params.set('flexibleHours', String(searchState.flexibleHours))
+      // Salary range
+      if (jobsSearch.searchState.salaryMin !== null && jobsSearch.searchState.salaryMin !== undefined) params.set('salaryMin', String(jobsSearch.searchState.salaryMin))
+      if (jobsSearch.searchState.salaryMax !== null && jobsSearch.searchState.salaryMax !== undefined) params.set('salaryMax', String(jobsSearch.searchState.salaryMax))
 
-    // Sort and pagination
-    if (searchState.sort !== 'relevance') params.set('sort', searchState.sort)
-    if (searchState.page > 1) params.set('page', String(searchState.page))
+      // Work arrangement
+      if (jobsSearch.searchState.remotePercentageMin !== null) params.set('remotePercentageMin', String(jobsSearch.searchState.remotePercentageMin))
+      if (jobsSearch.searchState.flexibleHours !== null) params.set('flexibleHours', String(jobsSearch.searchState.flexibleHours))
+
+      // Sort and pagination
+      if (jobsSearch.searchState.sort !== 'relevance') params.set('sort', jobsSearch.searchState.sort)
+      if (jobsSearch.searchState.page > 1) params.set('page', String(jobsSearch.searchState.page))
+    } else {
+      // Companies search params
+      if (companiesSearch.searchState.q) params.set('q', companiesSearch.searchState.q)
+      if (companiesSearch.searchState.industry) params.set('industry', companiesSearch.searchState.industry)
+      if (companiesSearch.searchState.location) params.set('location', companiesSearch.searchState.location)
+      if (companiesSearch.searchState.company_type) params.set('company_type', companiesSearch.searchState.company_type)
+      if (companiesSearch.searchState.size_range) params.set('size_range', companiesSearch.searchState.size_range)
+      if (companiesSearch.searchState.has_open_jobs) params.set('has_open_jobs', 'true')
+
+      // Sort and pagination
+      if (companiesSearch.searchState.sort !== 'relevance') params.set('sort', companiesSearch.searchState.sort)
+      if (companiesSearch.searchState.page > 1) params.set('page', String(companiesSearch.searchState.page))
+    }
 
     setSearchParams(params)
-  }, [searchState, setSearchParams])
+  }, [searchType, jobsSearch.searchState, companiesSearch.searchState, setSearchParams])
 
   // Handle search input changes (debounced)
   const handleSearchChange = useCallback((query) => {
     setFilter('q', query)
   }, [setFilter])
 
-  // Handle structured payload from suggestion (company/location/etc)
+  // Handle structured payload from suggestion (company only - location removed from text search)
   const handleSuggestionPayload = useCallback((payload) => {
     if (!payload) return
 
@@ -125,13 +262,14 @@ export default function SearchPage() {
       setFilter('companyId', companyId)
     }
 
-    if (payload.location_id || (payload.location && payload.location.id)) {
-      const locId = payload.location_id || payload.location.id
-      setFilter('locationId', locId)
-      // try to set human-friendly location text if available
-      const locText = payload.location_name || (payload.location && payload.location.name)
-      if (locText) setFilter('location', locText)
-    }
+    // Location removed from text search - users should use location filter dropdown instead
+    // if (payload.location_id || (payload.location && payload.location.id)) {
+    //   const locId = payload.location_id || payload.location.id
+    //   setFilter('locationId', locId)
+    //   // try to set human-friendly location text if available
+    //   const locText = payload.location_name || (payload.location && payload.location.name)
+    //   if (locText) setFilter('location', locText)
+    // }
 
     // Trigger search immediately for selected payload
     try {
@@ -140,6 +278,24 @@ export default function SearchPage() {
       // fallback: nothing
     }
   }, [setFilter, applyFilters])
+
+  // Handle company suggestion payload
+  const handleCompanySuggestionPayload = useCallback((payload) => {
+    if (!payload) return
+
+    // For companies, we mainly handle text suggestions
+    // Company payload might contain company_id or company name
+    if (payload.company_id) {
+      companiesSearch.setFilter('q', payload.text || '')
+    }
+
+    // Trigger search immediately
+    try {
+      companiesSearch.applyFilters()
+    } catch (e) {
+      // fallback: nothing
+    }
+  }, [companiesSearch])
 
   // Handle sort changes
   const handleSortChange = useCallback((sort) => {
@@ -155,6 +311,20 @@ export default function SearchPage() {
   const handleRemoveFilter = useCallback((filterKey, value) => {
     setFilter(filterKey, value)
   }, [setFilter])
+
+  // Handle clear all search and filters
+  const handleClearAll = useCallback(() => {
+    // Reset search query
+    setFilter('q', '')
+    // Reset location
+    setFilter('location', '')
+    setFilter('locationId', null)
+    // Reset all filters
+    resetFilters()
+    // Reset salary to undefined to use defaults
+    setFilter('salaryMin', undefined)
+    setFilter('salaryMax', undefined)
+  }, [setFilter, resetFilters])
 
   // Handle job click (log impression and navigate)
   const handleJobClick = useCallback(async (job) => {
@@ -193,25 +363,83 @@ export default function SearchPage() {
   return (
     <div className="search-page">
       <div className="search-header">
-        <h1>Tìm việc</h1>
+        <div className="header-top">
+        <h1>{searchType === 'jobs' ? 'Tìm việc' : 'Tìm công ty'}</h1>
+        <div className="search-type-toggle">
+          <button
+            className={`search-type-btn ${searchType === 'jobs' ? 'active' : ''}`}
+            onClick={() => handleSearchTypeChange('jobs')}
+            type="button"
+          >
+            🔍 Tìm việc làm
+          </button>
+          <button
+            className={`search-type-btn ${searchType === 'companies' ? 'active' : ''}`}
+            onClick={() => handleSearchTypeChange('companies')}
+            type="button"
+          >
+            🏢 Tìm công ty
+          </button>
+        </div>
+          <button
+            type="button"
+            className={`clear-all-button ${(searchState.q || searchState.location || hasActiveFilters) ? '' : 'hidden'}`}
+            onClick={handleClearAll}
+            disabled={loading}
+          >
+            <svg
+              className="clear-icon"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              aria-hidden="true"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M6 18L18 6M6 6l12 12"
+              />
+            </svg>
+            Đặt lại
+          </button>
+        </div>
         <SearchBar
           value={searchState.q}
           onChange={handleSearchChange}
-          placeholder="Tìm kiếm vị trí, công ty, kỹ năng..."
+          placeholder={searchType === 'jobs' ? "Tìm kiếm vị trí, công ty, kỹ năng..." : "Tìm kiếm công ty, ngành nghề, địa điểm..."}
           loading={loading}
           showSuggestions={FEATURES.ENABLE_SEARCH_SUGGESTIONS}
-          onSelectPayload={handleSuggestionPayload}
+          onSelectPayload={searchType === 'jobs' ? handleSuggestionPayload : handleCompanySuggestionPayload}
           userContext={userContext}
+          onClear={handleClearAll}
+          backendHistory={searchHistory}
+          onRemoveHistoryEntry={handleRemoveHistoryEntry}
+          onClearAllHistory={handleClearAllHistory}
+          searchHistoryLoading={searchHistoryLoading}
         />
       </div>
 
       <div className="search-content">
         <aside className="search-sidebar">
-          <JobFiltersSidebar
-            filters={searchState}
-            onFilterChange={handleFilterChange}
-            showAdvancedFilters={FEATURES.ENABLE_ADVANCED_SEARCH}
-          />
+          {searchType === 'jobs' ? (
+            <JobFiltersSidebar
+              filters={jobsSearch.searchState}
+              onFilterChange={(filterKey, value) => jobsSearch.setFilter(filterKey, value)}
+              showAdvancedFilters={FEATURES.ENABLE_ADVANCED_SEARCH}
+            />
+          ) : (
+            <CompanyFilters
+              filters={companiesSearch.searchState}
+              onChange={(partial) => companiesSearch.setFilters(partial)}
+              onApply={companiesSearch.applyFilters}
+              onClear={companiesSearch.resetFilters}
+              sizeOptions={sizeOptions}
+              industryOptions={industryOptions}
+              locationOptions={locationOptions}
+              companyTypeOptions={companyTypeOptions}
+            />
+          )}
         </aside>
 
         <main className="search-results">
@@ -229,7 +457,7 @@ export default function SearchPage() {
                   onClick={resetFilters}
                   disabled={loading}
                 >
-                  Xóa tất cả bộ lọc ({activeFilterCount})
+                  Xóa bộ lọc ({activeFilterCount})
                 </button>
               )}
             </div>

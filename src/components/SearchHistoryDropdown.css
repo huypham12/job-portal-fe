@@ -117,6 +117,19 @@
   opacity: 1;
 }
 
+.search-history-results {
+  font-size: 0.75rem;
+  color: #6b7280;
+  margin-left: 0.5rem;
+}
+
+.search-history-loading {
+  text-align: center;
+  padding: 1rem;
+  color: #6b7280;
+  font-size: 0.875rem;
+}
+
 /* Mobile responsive */
 @media (max-width: 480px) {
   .search-history-dropdown {

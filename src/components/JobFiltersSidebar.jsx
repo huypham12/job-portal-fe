@@ -1,276 +1,341 @@
-import React, { useState, useEffect } from 'react'
-import { SkillAutocomplete } from './jobs/SkillAutocomplete.jsx'
-import LocationSelector from './LocationSelector.jsx'
-import SalaryRangeInput from './jobs/SalaryRangeInput.jsx'
-import './JobFiltersSidebar.css'
+import React, { useState, useEffect } from "react";
+import { LocationService } from "../lib/api.js";
+import LocationSelector from "./LocationSelector.jsx";
+import SalaryRangeSlider from "./jobs/SalaryRangeSlider.jsx";
+import "./JobFiltersSidebar.css";
+
+// Icons as SVG components for better performance
+const LocationIcon = () => (
+  <svg
+    width="20"
+    height="20"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+  >
+    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+    <circle cx="12" cy="10" r="3" />
+  </svg>
+);
+
+const JobTypeIcon = () => (
+  <svg
+    width="20"
+    height="20"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+  >
+    <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" />
+  </svg>
+);
+
+const ExperienceIcon = () => (
+  <svg
+    width="20"
+    height="20"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+  >
+    <circle cx="12" cy="12" r="10" />
+    <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
+    <path d="M12 17h.01" />
+  </svg>
+);
+
+const SalaryIcon = () => (
+  <svg
+    width="20"
+    height="20"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+  >
+    <path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+  </svg>
+);
 
 const JOB_TYPES = [
-  { value: 'full_time', label: 'Toàn thời gian' },
-  { value: 'part_time', label: 'Bán thời gian' },
-  { value: 'contract', label: 'Hợp đồng' }
-]
+  { value: "full_time", label: "Toàn thời gian" },
+  { value: "part_time", label: "Bán thời gian" },
+  { value: "contract", label: "Hợp đồng" },
+];
 
 const EXPERIENCE_LEVELS = [
-  { value: null, label: 'Tất cả' },
-  { value: 0, label: 'Không yêu cầu kinh nghiệm' },
-  { value: 1, label: '1 năm' },
-  { value: 2, label: '2 năm' },
-  { value: 3, label: '3 năm' },
-  { value: 4, label: '4 năm' },
-  { value: 5, label: '5+ năm' }
-]
+  { value: null, label: "Tất cả" },
+  { value: 0, label: "Không yêu cầu kinh nghiệm" },
+  { value: 1, label: "1 năm" },
+  { value: 2, label: "2 năm" },
+  { value: 3, label: "3 năm" },
+  { value: 4, label: "4 năm" },
+  { value: 5, label: "5+ năm" },
+];
 
-const JOB_CATEGORIES = [
-  { value: 'technology', label: 'Công nghệ' },
-  { value: 'business', label: 'Kinh doanh' },
-  { value: 'marketing', label: 'Marketing' },
-  { value: 'design', label: 'Thiết kế' },
-  { value: 'finance', label: 'Tài chính' },
-  { value: 'education', label: 'Giáo dục' },
-  { value: 'healthcare', label: 'Y tế' },
-  { value: 'engineering', label: 'Kỹ thuật' }
-]
-
-const JOB_BENEFITS = [
-  { value: 'health_insurance', label: 'Bảo hiểm sức khỏe' },
-  { value: 'dental_care', label: 'Chăm sóc răng miệng' },
-  { value: 'paid_time_off', label: 'Nghỉ phép có lương' },
-  { value: 'remote_work', label: 'Làm việc từ xa' },
-  { value: 'flexible_hours', label: 'Giờ làm linh hoạt' },
-  { value: 'professional_development', label: 'Đào tạo chuyên môn' },
-  { value: 'gym_membership', label: 'Phí gym' },
-  { value: 'meal_allowance', label: 'Phụ cấp ăn uống' }
-]
-
-export default function JobFiltersSidebar({ filters, onFilterChange, showAdvancedFilters = true }) {
-  const [remotePercentage, setRemotePercentage] = useState(filters.remotePercentageMin || 0)
-
+export default function JobFiltersSidebar({
+  filters,
+  onFilterChange,
+  showAdvancedFilters = true,
+}) {
   // Location state - parse current location filter
-  const [selectedProvince, setSelectedProvince] = useState(null)
-  const [selectedDistrict, setSelectedDistrict] = useState(null)
+  const [selectedProvince, setSelectedProvince] = useState(null);
+  const [selectedDistrict, setSelectedDistrict] = useState(null);
 
-  // Parse location string on filter change
+  // Initialize selectedProvince/selectedDistrict from filters (locationId or location text)
   React.useEffect(() => {
-    // This is a simplified parsing - in reality you'd need to match against actual location data
-    // For now, we'll keep it simple and use the location string as is
-    setSelectedProvince(null)
-    setSelectedDistrict(null)
-  }, [filters.location])
+    let mounted = true;
 
-  const handleSkillsChange = (selectedSkills) => {
-    onFilterChange('skills', selectedSkills.map(skill => typeof skill === 'string' ? skill : skill.name))
-  }
+    const initFromFilters = async () => {
+      try {
+        // Prefer explicit locationId (UUID) for exact mapping
+        if (filters.locationId) {
+          const res = await LocationService.getById(filters.locationId);
+          const locWrapper = res || {};
+          // Controller returns { success, message, data: location }
+          const loc = locWrapper.data || locWrapper;
+          if (!mounted || !loc) return;
 
-  const handleSalaryMinChange = (e) => {
-    const value = e.target.value
-    setSalaryMinInput(value)
-    const numValue = value === '' ? null : parseInt(value, 10)
-    if (!isNaN(numValue) || numValue === null) {
-      onFilterChange('salaryMin', numValue)
-    }
-  }
+          if (loc.type === "province") {
+            setSelectedProvince({ id: loc.id, name: loc.name });
+            setSelectedDistrict(null);
+          } else if (loc.type === "district") {
+            setSelectedDistrict({ id: loc.id, name: loc.name });
+            if (loc.parent)
+              setSelectedProvince({ id: loc.parent.id, name: loc.parent.name });
+          } else {
+            setSelectedProvince(null);
+            setSelectedDistrict(null);
+          }
+          return;
+        }
 
-  const handleSalaryMaxChange = (e) => {
-    const value = e.target.value
-    setSalaryMaxInput(value)
-    const numValue = value === '' ? null : parseInt(value, 10)
-    if (!isNaN(numValue) || numValue === null) {
-      onFilterChange('salaryMax', numValue)
-    }
-  }
+        // Fallback: try to search by human-readable location text
+        if (filters.location) {
+          try {
+            const res = await LocationService.search({
+              search: filters.location,
+              limit: 1,
+            });
+            const hits = res?.data || [];
+            const loc = Array.isArray(hits) && hits.length ? hits[0] : null;
+            if (!mounted) return;
+            if (!loc) {
+              setSelectedProvince(null);
+              setSelectedDistrict(null);
+              return;
+            }
+            if (loc.type === "province") {
+              setSelectedProvince({ id: loc.id, name: loc.name });
+              setSelectedDistrict(null);
+            } else if (loc.type === "district") {
+              setSelectedDistrict({ id: loc.id, name: loc.name });
+              if (loc.parent)
+                setSelectedProvince({
+                  id: loc.parent.id,
+                  name: loc.parent.name,
+                });
+            }
+            return;
+          } catch (e) {
+            // If search fails, clear selection safely
+            console.warn(
+              "Location search failed while initializing filters",
+              e
+            );
+            setSelectedProvince(null);
+            setSelectedDistrict(null);
+            return;
+          }
+        }
 
-  const handleJobCategoriesChange = (category) => {
-    const currentCategories = filters.jobCategories || []
-    const newCategories = currentCategories.includes(category)
-      ? currentCategories.filter(c => c !== category)
-      : [...currentCategories, category]
-    onFilterChange('jobCategories', newCategories)
-  }
+        // No location provided - clear selection
+        setSelectedProvince(null);
+        setSelectedDistrict(null);
+      } catch (err) {
+        console.error("Failed to initialize location from filters", err);
+      }
+    };
 
-  const handleJobBenefitsChange = (benefit) => {
-    const currentBenefits = filters.jobBenefits || []
-    const newBenefits = currentBenefits.includes(benefit)
-      ? currentBenefits.filter(b => b !== benefit)
-      : [...currentBenefits, benefit]
-    onFilterChange('jobBenefits', newBenefits)
-  }
-
-  const handleRemotePercentageChange = (e) => {
-    const value = parseInt(e.target.value, 10)
-    setRemotePercentage(value)
-    onFilterChange('remotePercentageMin', value > 0 ? value : null)
-  }
+    initFromFilters();
+    return () => {
+      mounted = false;
+    };
+  }, [filters.locationId, filters.location]);
 
   return (
     <aside className="job-filters-sidebar" aria-label="Job filters">
       <div className="sidebar-header">
-        <h3>Lọc công việc</h3>
-        <p>Tìm công việc phù hợp nhất với bạn.</p>
+        <div className="header-icon">
+          <svg
+            width="24"
+            height="24"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+          >
+            <path d="M3 6a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6z" />
+            <path d="M3 6l9 9 9-9" />
+          </svg>
+        </div>
+        <div className="header-content">
+          <h3>Lọc công việc</h3>
+          <p>Tìm công việc phù hợp nhất với bạn.</p>
+        </div>
       </div>
 
       {/* Location */}
       <div className="filter-section">
-        <div className="section-label">Địa điểm</div>
-        <LocationSelector
-          selectedProvince={selectedProvince}
-          selectedDistrict={selectedDistrict}
-          onProvinceChange={(province) => {
-            setSelectedProvince(province)
-            // Update location filter with province name or ID
-            onFilterChange('location', province ? province.name : '')
-            // Also update locationId if you want to use ID-based filtering
-            onFilterChange('locationId', province ? province.id : null)
-          }}
-          onDistrictChange={(district) => {
-            setSelectedDistrict(district)
-            // Update location filter with district name for text search
-            // Backend can handle both province and district in location_name filter
-            const locationText = district
-              ? `${selectedProvince?.name || ''}, ${district.name}`.trim()
-              : selectedProvince?.name || ''
-            onFilterChange('location', locationText)
-          }}
-        />
+        <div className="section-header">
+          <div className="section-icon">
+            <LocationIcon />
+          </div>
+          <div className="section-label">Địa điểm</div>
+          {(selectedProvince || selectedDistrict) && (
+            <div className="section-indicator active"></div>
+          )}
+        </div>
+        <div className="section-content">
+          <LocationSelector
+            selectedProvince={selectedProvince}
+            selectedDistrict={selectedDistrict}
+            onProvinceChange={(province) => {
+              setSelectedProvince(province);
+              // Update location filter with province name or ID
+              onFilterChange("location", province ? province.name : "");
+              // Also update locationId if you want to use ID-based filtering
+              onFilterChange("locationId", province ? province.id : null);
+            }}
+            onDistrictChange={(district) => {
+              setSelectedDistrict(district);
+              // Update location filter with district name for display/UI purposes
+              // Location is now handled via locationId filter only (not text search)
+              const locationText = district
+                ? `${selectedProvince?.name || ""}, ${district.name}`.trim()
+                : selectedProvince?.name || "";
+              onFilterChange("location", locationText);
+              // Prefer exact district id filtering when available; fall back to province id when district cleared
+              if (district && district.id) {
+                onFilterChange("locationId", district.id);
+              } else {
+                onFilterChange(
+                  "locationId",
+                  selectedProvince ? selectedProvince.id : null
+                );
+              }
+            }}
+          />
+        </div>
       </div>
 
       {/* Job Type */}
       <div className="filter-section">
-        <div className="section-label">Loại công việc</div>
-        <div className="pill-grid" role="group" aria-label="Loại công việc">
-          {JOB_TYPES.map((type) => {
-            const active = filters.jobType === type.value
-            return (
-              <button
-                key={type.value}
-                type="button"
-                className={`pill${active ? ' pill--active' : ''}`}
-                onClick={() => onFilterChange('jobType', active ? '' : type.value)}
-                aria-pressed={active}
-              >
-                {type.label}
-              </button>
-            )
-          })}
+        <div className="section-header">
+          <div className="section-icon">
+            <JobTypeIcon />
+          </div>
+          <div className="section-label">Loại công việc</div>
+          {filters.jobType && <div className="section-indicator active"></div>}
+        </div>
+        <div className="section-content">
+          <div className="pill-grid" role="group" aria-label="Loại công việc">
+            {JOB_TYPES.map((type) => {
+              const active = filters.jobType === type.value;
+              return (
+                <button
+                  key={type.value}
+                  type="button"
+                  className={`pill${active ? " pill--active" : ""}`}
+                  onClick={() =>
+                    onFilterChange("jobType", active ? "" : type.value)
+                  }
+                  aria-pressed={active}
+                >
+                  {type.label}
+                </button>
+              );
+            })}
+          </div>
         </div>
       </div>
 
       {/* Experience Level */}
       <div className="filter-section">
-        <div className="section-label">Kinh nghiệm</div>
-        <select
-          value={filters.experienceLevel || ''}
-          onChange={(e) => onFilterChange('experienceLevel', e.target.value === '' ? null : parseInt(e.target.value, 10))}
-          className="filter-select"
-          aria-label="Mức kinh nghiệm"
-        >
-          {EXPERIENCE_LEVELS.map((level) => (
-            <option key={level.value} value={level.value || ''}>
-              {level.label}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      {/* Skills */}
-      <div className="filter-section">
-        <div className="section-label">Kỹ năng</div>
-        <SkillAutocomplete
-          selectedSkills={filters.skills || []}
-          onChange={handleSkillsChange}
-          placeholder="Nhập kỹ năng cần thiết..."
-          maxSelections={10}
-        />
+        <div className="section-header">
+          <div className="section-icon">
+            <ExperienceIcon />
+          </div>
+          <div className="section-label">Kinh nghiệm</div>
+          {filters.experienceLevel !== null &&
+            filters.experienceLevel !== undefined && (
+              <div className="section-indicator active"></div>
+            )}
+        </div>
+        <div className="section-content">
+          <div className="select-wrapper">
+            <select
+              value={filters.experienceLevel || ""}
+              onChange={(e) =>
+                onFilterChange(
+                  "experienceLevel",
+                  e.target.value === "" ? null : parseInt(e.target.value, 10)
+                )
+              }
+              className="filter-select"
+              aria-label="Mức kinh nghiệm"
+            >
+              {EXPERIENCE_LEVELS.map((level) => (
+                <option key={level.value} value={level.value || ""}>
+                  {level.label}
+                </option>
+              ))}
+            </select>
+            <div className="select-arrow">
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+              >
+                <path d="M6 9l6 6 6-6" />
+              </svg>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Salary Range */}
       <div className="filter-section">
-        <div className="section-label">Mức lương (VND/tháng)</div>
-        <div className="salary-wrapper">
-          <SalaryRangeInput
-            value={{ min: filters.salaryMin || '', max: filters.salaryMax || '', currency: 'VND' }}
-            onChange={(val) => {
-              const min = val.min === '' || val.min === null ? null : Number(val.min)
-              const max = val.max === '' || val.max === null ? null : Number(val.max)
-              onFilterChange('salaryMin', min)
-              onFilterChange('salaryMax', max)
-            }}
-            showPresets={true}
-          />
+        <div className="section-header">
+          <div className="section-icon">
+            <SalaryIcon />
+          </div>
+          <div className="section-label">Mức lương</div>
+          {(filters.salaryMin || filters.salaryMax) && (
+            <div className="section-indicator active"></div>
+          )}
         </div>
-      </div>
-
-      {/* Job Categories */}
-      <div className="filter-section">
-        <div className="section-label">Lĩnh vực</div>
-        <div className="checkbox-grid">
-          {JOB_CATEGORIES.map((category) => {
-            const checked = (filters.jobCategories || []).includes(category.value)
-            return (
-              <label key={category.value} className="checkbox-item">
-                <input
-                  type="checkbox"
-                  checked={checked}
-                  onChange={() => handleJobCategoriesChange(category.value)}
-                  aria-label={`Lĩnh vực ${category.label}`}
-                />
-                <span className="checkbox-label">{category.label}</span>
-              </label>
-            )
-          })}
-        </div>
-      </div>
-
-      {/* Job Benefits */}
-      <div className="filter-section">
-        <div className="section-label">Phúc lợi</div>
-        <div className="checkbox-grid">
-          {JOB_BENEFITS.map((benefit) => {
-            const checked = (filters.jobBenefits || []).includes(benefit.value)
-            return (
-              <label key={benefit.value} className="checkbox-item">
-                <input
-                  type="checkbox"
-                  checked={checked}
-                  onChange={() => handleJobBenefitsChange(benefit.value)}
-                  aria-label={`Phúc lợi ${benefit.label}`}
-                />
-                <span className="checkbox-label">{benefit.label}</span>
-              </label>
-            )
-          })}
-        </div>
-      </div>
-
-      {/* Remote Work */}
-      <div className="filter-section">
-        <div className="section-label">Làm việc từ xa</div>
-        <div className="remote-controls">
-          <label className="checkbox-item">
-            <input
-              type="checkbox"
-              checked={filters.flexibleHours || false}
-              onChange={(e) => onFilterChange('flexibleHours', e.target.checked)}
-              aria-label="Giờ làm linh hoạt"
-            />
-            <span className="checkbox-label">Giờ làm linh hoạt</span>
-          </label>
-
-          <div className="remote-percentage">
-            <label htmlFor="remote-percentage">Mức độ remote tối thiểu: {remotePercentage}%</label>
-            <input
-              id="remote-percentage"
-              type="range"
-              min="0"
-              max="100"
-              step="10"
-              value={remotePercentage}
-              onChange={handleRemotePercentageChange}
-              className="remote-slider"
-              aria-label="Mức độ làm việc từ xa tối thiểu"
+        <div className="section-content">
+          <div className="salary-wrapper">
+            <SalaryRangeSlider
+              value={{
+                min: filters.salaryMin,
+                max: filters.salaryMax,
+              }}
+              onChange={(val) => {
+                onFilterChange("salaryMin", val.min);
+                onFilterChange("salaryMax", val.max);
+              }}
             />
           </div>
         </div>
       </div>
     </aside>
-  )
+  );
 }

@@ -14,7 +14,13 @@ export default function SearchBar({
   loading = false,
   showSuggestions = true,
   className = '',
-  userContext = {} // { userLocation, userExperienceLevel, userSkills }
+  userContext = {}, // { userLocation, userExperienceLevel, userSkills }
+  onClear, // optional callback to clear all search content
+  // New props for backend search history integration
+  backendHistory = null,
+  onRemoveHistoryEntry = null,
+  onClearAllHistory = null,
+  searchHistoryLoading = false
 }) {
   const [inputValue, setInputValue] = useState(value)
   const [suggestions, setSuggestions] = useState([])
@@ -108,19 +114,25 @@ export default function SearchBar({
     const finalValue = inputValue.trim()
 
     if (finalValue && !rateLimited) {
-      searchHistoryUtils.addToHistory(finalValue)
+      // Only add to localStorage if not using backend history
+      if (!backendHistory) {
+        searchHistoryUtils.addToHistory(finalValue)
+      }
       onChange(finalValue)
       setShowDropdown(false)
       setShowHistory(false)
       inputRef.current?.blur()
     }
-  }, [inputValue, onChange, rateLimited])
+  }, [inputValue, onChange, rateLimited, backendHistory])
 
   // Handle suggestion selection
   const handleSuggestionSelect = useCallback((suggestion) => {
     const selectedText = suggestion.text || suggestion
     setInputValue(selectedText)
-    searchHistoryUtils.addToHistory(selectedText)
+    // Only add to localStorage if not using backend history
+    if (!backendHistory) {
+      searchHistoryUtils.addToHistory(selectedText)
+    }
     onChange(selectedText)
     // If suggestion carries structured payload (company/location/etc), forward it
     if (suggestion && suggestion.payload && typeof onSelectPayload === 'function') {
@@ -134,7 +146,7 @@ export default function SearchBar({
     setShowHistory(false)
     setSelectedIndex(-1)
     inputRef.current?.blur()
-  }, [onChange])
+  }, [onChange, onSelectPayload, backendHistory])
 
   // Handle keyboard navigation
   const handleKeyDown = useCallback((e) => {
@@ -156,10 +168,6 @@ export default function SearchBar({
         if (selectedIndex >= 0 && suggestions[selectedIndex]) {
           const s = suggestions[selectedIndex]
           handleSuggestionSelect(s)
-          // also forward payload if present
-          if (s && s.payload && typeof onSelectPayload === 'function') {
-            try { onSelectPayload(s.payload) } catch (e) { /* ignore */ }
-          }
         } else {
           handleSubmit(e)
         }
@@ -236,6 +244,37 @@ export default function SearchBar({
           />
 
           <button
+            type="button"
+            className={`clear-button ${inputValue.trim() ? '' : 'hidden'}`}
+            onClick={() => {
+              setInputValue('')
+              setSelectedIndex(-1)
+              setShowDropdown(false)
+              setShowHistory(true)
+              setSuggestions([])
+              onChange('')
+              if (onClear) onClear()
+            }}
+            aria-label="Xóa tìm kiếm"
+            disabled={rateLimited}
+          >
+            <svg
+              className="clear-icon"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              aria-hidden="true"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M6 18L18 6M6 6l12 12"
+              />
+            </svg>
+          </button>
+
+          <button
             type="submit"
             className="search-button"
             disabled={loading || !inputValue.trim()}
@@ -271,6 +310,19 @@ export default function SearchBar({
           selectedIndex={selectedIndex}
           onSelect={handleSuggestionSelect}
           query={inputValue}
+        />
+      )}
+
+      {showSuggestions && showHistory && !showDropdown && (
+        <SearchHistoryDropdown
+          ref={historyRef}
+          query={inputValue}
+          backendHistory={backendHistory}
+          onRemoveHistoryEntry={onRemoveHistoryEntry}
+          onClearAllHistory={onClearAllHistory}
+          isLoading={searchHistoryLoading}
+          onSelect={handleSuggestionSelect}
+          onClose={() => setShowHistory(false)}
         />
       )}
     </div>
