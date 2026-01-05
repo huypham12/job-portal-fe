@@ -152,12 +152,6 @@ export default function App(){
                         </button>
                         {role === 'seeker' && (
                           <>
-                          <button className="btn ghost" style={{ width: '100%', textAlign: 'left', justifyContent: 'flex-start' }} onClick={() => { setMenuOpen(false); navigate('/recommendations/for-you') }}>
-                            💡 Đề xuất cho bạn
-                          </button>
-                          <button className="btn ghost" style={{ width: '100%', textAlign: 'left', justifyContent: 'flex-start' }} onClick={() => { setMenuOpen(false); navigate('/matched-jobs') }}>
-                            🎯 Việc phù hợp
-                          </button>
                           <button className="btn ghost" style={{ width: '100%', textAlign: 'left', justifyContent: 'flex-start' }} onClick={() => { setMenuOpen(false); navigate('/resumes') }}>
                             CV của tôi
                           </button>
