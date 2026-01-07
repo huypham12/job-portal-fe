@@ -123,6 +123,24 @@ export default function MyJobs() {
   };
 
   const handleStatusToggle = async (jobId, currentStatus) => {
+    const job = jobs.find((j) => j.id === jobId);
+    if (!job) {
+      alert("Không tìm thấy tin tuyển dụng.");
+      return;
+    }
+
+    // If job was rejected by admin (closed && not admin_approved), recruiter must edit & publish again
+    if (currentStatus === "closed" && job.admin_approved === false) {
+      if (
+        confirm(
+          "Tin này đã bị admin từ chối. Bạn cần sửa và gửi lại để admin duyệt. Mở trang chỉnh sửa bây giờ?"
+        )
+      ) {
+        navigate(`/edit-job/${jobId}`);
+      }
+      return;
+    }
+
     const newStatus = currentStatus === "approved" ? "closed" : "approved";
     try {
       await jobsApi.updateJobStatus(jobId, { status: newStatus });
@@ -500,6 +518,20 @@ export default function MyJobs() {
                         </td>
                         <td>
                           <strong>{job.title || "Chưa có tiêu đề"}</strong>
+                          {job.status === "closed" &&
+                            job.admin_approved === false &&
+                            job.metadata?.rejection_reason && (
+                              <div
+                                style={{
+                                  marginTop: 6,
+                                  color: "#b91c1c",
+                                  fontSize: 12,
+                                }}
+                              >
+                                Lý do bị từ chối:{" "}
+                                {job.metadata.rejection_reason}
+                              </div>
+                            )}
                         </td>
                         <td>
                           <Badge
@@ -580,13 +612,29 @@ export default function MyJobs() {
                             </Button>
                           )}
                           {status === "closed" && (
-                            <Button
-                              variant="outline"
-                              size="small"
-                              onClick={() => handleStatusToggle(job.id, status)}
-                            >
-                              Mở lại
-                            </Button>
+                            <>
+                              {job.admin_approved ? (
+                                <Button
+                                  variant="outline"
+                                  size="small"
+                                  onClick={() =>
+                                    handleStatusToggle(job.id, status)
+                                  }
+                                >
+                                  Mở lại
+                                </Button>
+                              ) : (
+                                <Button
+                                  variant="primary"
+                                  size="small"
+                                  onClick={() =>
+                                    navigate(`/edit-job/${job.id}`)
+                                  }
+                                >
+                                  Sửa & Gửi duyệt
+                                </Button>
+                              )}
+                            </>
                           )}
                         </td>
                       </tr>
@@ -638,6 +686,19 @@ export default function MyJobs() {
                     <h3 className="job-card-title">
                       {job.title || "Chưa có tiêu đề"}
                     </h3>
+                    {job.status === "closed" &&
+                      job.admin_approved === false &&
+                      job.metadata?.rejection_reason && (
+                        <div
+                          style={{
+                            marginTop: 6,
+                            color: "#b91c1c",
+                            fontSize: 13,
+                          }}
+                        >
+                          Lý do bị từ chối: {job.metadata.rejection_reason}
+                        </div>
+                      )}
 
                     <div className="job-card-stats">
                       <div className="job-stat">
@@ -751,13 +812,29 @@ export default function MyJobs() {
                         </Button>
                       )}
                       {status === "closed" && (
-                        <Button
-                          variant="outline"
-                          size="small"
-                          onClick={() => handleStatusToggle(job.id, status)}
-                        >
-                          Mở lại
-                        </Button>
+                        <>
+                          {job.admin_approved ? (
+                            <Button
+                              variant="outline"
+                              size="small"
+                              onClick={() => handleStatusToggle(job.id, status)}
+                            >
+                              Mở lại
+                            </Button>
+                          ) : (
+                            <Button
+                              variant="primary"
+                              size="small"
+                              onClick={() =>
+                                navigate(
+                                  `/edit-job/${job.id}?submitForApproval=true`
+                                )
+                              }
+                            >
+                              Sửa & Gửi duyệt
+                            </Button>
+                          )}
+                        </>
                       )}
                     </div>
                   </Card>

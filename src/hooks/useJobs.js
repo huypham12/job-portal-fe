@@ -120,6 +120,7 @@ export function useMyJobs(initialFilters = {}) {
     filters.status,
     filters.sort_by,
     filters.sort_order,
+    filters.search, // trigger fetch when search term changes
   ]);
 
   return {

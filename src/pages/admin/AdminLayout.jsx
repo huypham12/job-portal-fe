@@ -3,7 +3,16 @@ import { Outlet, useNavigate, useLocation } from 'react-router-dom'
 import { getAuthUser, getRefreshToken, logout as clearAuth } from '../../auth/auth'
 import { AuthClient } from '../../services/authClient'
 import { ProfileClient } from '../../services/profileClient'
+
+// Preload tất cả admin CSS để tránh FOUC (Flash of Unstyled Content)
 import './styles/admin-layout.css'
+import './styles/admin-dashboard.css'
+import './styles/admin-users.css'
+import './styles/admin-jobs.css'
+import './styles/admin-login.css'
+
+// Import global CSS để đảm bảo consistency
+import '../../index.css'
 
 const navItems = [
   { label: 'Bảng điều khiển', path: '/admin/dashboard' },
@@ -18,6 +27,7 @@ export default function AdminLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [profileOpen, setProfileOpen] = useState(false)
   const [profileMeta, setProfileMeta] = useState(null)
+  const [cssLoaded, setCssLoaded] = useState(false)
   const menuRef = useRef(null)
 
   useEffect(() => {
@@ -30,6 +40,12 @@ export default function AdminLayout() {
       }
     }
     loadProfile()
+  }, [])
+
+  useEffect(() => {
+    // Đánh dấu CSS đã load sau một khoảng thời gian ngắn
+    const timer = setTimeout(() => setCssLoaded(true), 50)
+    return () => clearTimeout(timer)
   }, [])
 
   useEffect(() => {
@@ -61,6 +77,39 @@ export default function AdminLayout() {
   const displayName = profileMeta?.profile?.display_name || profileMeta?.profile?.full_name || authUser?.name || 'Admin'
   const avatarUrl = profileMeta?.profile?.avatar_url || authUser?.avatar || ''
   const avatarFallback = (displayName || 'A').trim().charAt(0).toUpperCase()
+
+  // Hiển thị loading screen cho đến khi CSS được load
+  if (!cssLoaded) {
+    return (
+      <div style={{
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        height: '100vh',
+        background: '#f5f7fb',
+        fontFamily: 'Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif'
+      }}>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{
+            width: '40px',
+            height: '40px',
+            border: '3px solid #e2e8f0',
+            borderTop: '3px solid #dc2626',
+            borderRadius: '50%',
+            animation: 'spin 1s linear infinite',
+            margin: '0 auto 16px'
+          }} />
+          <p style={{ color: '#64748b', margin: 0 }}>Đang tải giao diện quản trị...</p>
+        </div>
+        <style>{`
+          @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+          }
+        `}</style>
+      </div>
+    )
+  }
 
   return (
     <div className="admin-shell">

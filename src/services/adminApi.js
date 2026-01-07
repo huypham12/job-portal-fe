@@ -110,21 +110,13 @@ export const adminApi = {
     return api.patch(`/api/admin/jobs/${jobId}/reject`, { reason })
   },
 
-  /**
-   * Cập nhật labels cho job (hot, urgent, featured)
-   * @param {string} jobId - UUID của job
-   * @param {Object} labels - { hot?, urgent?, featured? }
-   */
-  updateJobLabels: async (jobId, labels) => {
-    return api.patch(`/api/admin/jobs/${jobId}/label`, labels)
-  },
 
   /**
    * Xóa job vi phạm (soft delete)
    * @param {string} jobId - UUID của job
    */
   deleteJobForViolation: async (jobId) => {
-    return api.delete(`/api/admin/jobs/${jobId}/violation`)
+    return api.del(`/api/admin/jobs/${jobId}/violation`)
   },
 
   /**
@@ -133,6 +125,14 @@ export const adminApi = {
    */
   restoreJob: async (jobId) => {
     return api.post(`/api/admin/jobs/${jobId}/restore`)
+  },
+
+  /**
+   * Xóa vĩnh viễn job (hard delete)
+   * @param {string} jobId - UUID của job
+   */
+  hardDeleteJob: async (jobId) => {
+    return api.del(`/api/admin/jobs/${jobId}/hard-delete`)
   },
 }
 

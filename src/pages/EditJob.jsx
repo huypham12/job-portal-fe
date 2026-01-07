@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { JobService, LocationService } from "../lib/api.js";
 import { companyApi } from "../services/companyApi";
 import { jobsApi } from "../services/jobsApi";
@@ -69,6 +69,9 @@ export default function EditJob() {
   console.log("EditJob component rendered");
   const navigate = useNavigate();
   const { jobId } = useParams();
+  const location = useLocation();
+  const submitForApproval =
+    new URLSearchParams(location.search).get("submitForApproval") === "true";
 
   const [jobData, setJobData] = useState(null);
   const [jobLoading, setJobLoading] = useState(true);
@@ -1041,7 +1044,62 @@ export default function EditJob() {
 
     try {
       setError(null);
-      await jobsApi.publishJobs({ job_ids: [jobId] });
+      // Publish logic:
+      // - If current job is draft, just publish it.
+      // - If job was deleted or not draft, create a new job (copy) and publish that instead.
+      if (jobData?.status === "draft" && !jobData?.deleted) {
+        await jobsApi.publishJobs({ job_ids: [jobId] });
+      } else {
+        // Build payload from current form
+        const payload = {
+          title: form.title.trim(),
+          description: form.description.trim(),
+          location_id: form.location_id || null,
+          salary_range:
+            form.salary_min && form.salary_max
+              ? {
+                  min: parseInt(form.salary_min, 10),
+                  max: parseInt(form.salary_max, 10),
+                  currency: form.currency || "VND",
+                }
+              : undefined,
+          job_type: form.job_type,
+          experience_level: form.experience_level
+            ? parseInt(form.experience_level, 10)
+            : null,
+          expires_at: form.expires_at
+            ? new Date(form.expires_at).toISOString()
+            : undefined,
+          requirements:
+            form.requirements.filter(
+              (req) => req.title?.trim() && req.requirement_type
+            ).length > 0
+              ? form.requirements
+              : undefined,
+          benefits:
+            form.benefits.filter((ben) => ben.title?.trim() && ben.benefit_type)
+              .length > 0
+              ? form.benefits
+              : undefined,
+          skill_ids: form.skill_ids.length > 0 ? form.skill_ids : undefined,
+          work_arrangements:
+            form.work_arrangements.is_remote_allowed ||
+            form.work_arrangements.flexible_hours ||
+            form.work_arrangements.travel_requirement?.trim() ||
+            form.work_arrangements.overtime_expected ||
+            form.work_arrangements.shift_type
+              ? form.work_arrangements
+              : undefined,
+          company_id: form.company_id || undefined,
+        };
+
+        const created = await jobsApi.createJob(payload);
+        if (created && created.id) {
+          await jobsApi.publishJobs({ job_ids: [created.id] });
+        } else {
+          throw new Error("Failed to create job for publishing");
+        }
+      }
       alert("Đã gửi tin tuyển dụng để admin duyệt!");
       navigate("/recruiter/jobs");
     } catch (err) {
@@ -1140,7 +1198,51 @@ export default function EditJob() {
             : undefined,
       };
 
+      // If submitForApproval is requested, handle publishing flow:
+      if (submitForApproval) {
+        try {
+          // If current job is draft and not deleted, update it then publish
+          if (jobData?.status === "draft" && !jobData?.deleted) {
+            await updateJob(payload);
+            await jobsApi.publishJobs({ job_ids: [jobId] });
+          } else {
+            // Otherwise create a new job (copy) and publish it
+            const createPayload = {
+              title: payload.title,
+              description: payload.description,
+              location_id: payload.location_id,
+              salary_range: payload.salary_range,
+              job_type: payload.job_type,
+              experience_level: payload.experience_level,
+              expires_at: payload.expires_at,
+              requirements: payload.requirements,
+              benefits: payload.benefits,
+              skill_ids: payload.skill_ids,
+              work_arrangements: payload.work_arrangements,
+              company_id: payload.company_id,
+            };
+            const created = await jobsApi.createJob(createPayload);
+            if (created && created.id) {
+              await jobsApi.publishJobs({ job_ids: [created.id] });
+            } else {
+              throw new Error("Failed to create job for publishing");
+            }
+          }
+          alert("Đã gửi tin tuyển dụng để admin duyệt!");
+          navigate("/recruiter/jobs");
+          return;
+        } catch (err) {
+          console.error("Failed to publish after update/create:", err);
+          setError(
+            err?.message || "Không thể gửi duyệt tin tuyển dụng sau khi lưu."
+          );
+          // fallthrough to default success navigation if desired
+        }
+      }
+
+      // Default behavior: just update existing job
       await updateJob(payload);
+
       alert("Đã cập nhật tin tuyển dụng thành công!");
       navigate("/recruiter/jobs");
     } catch (err) {
@@ -1171,9 +1273,12 @@ export default function EditJob() {
   // Get action buttons based on job status
   const getActionButtons = () => {
     const currentStatus = jobData?.status;
+    const isRejectedByAdmin =
+      currentStatus === "closed" && jobData?.admin_approved === false;
+    const isDeletedByAdmin = jobData?.deleted === true;
 
-    // If job is draft, show "Lưu thay đổi" and "Gửi duyệt"
-    if (currentStatus === "draft") {
+    // Show "Gửi duyệt" when draft OR job was rejected or removed by admin (allow resubmit)
+    if (currentStatus === "draft" || isRejectedByAdmin || isDeletedByAdmin) {
       return (
         <>
           <Button
