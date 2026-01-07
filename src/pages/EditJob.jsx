@@ -1,9 +1,9 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { JobService, LocationService } from "../lib/api.js";
 import { companyApi } from "../services/companyApi";
 import { jobsApi } from "../services/jobsApi";
-import { useJobCreate, useSkills, useCategories } from "../hooks/useJobs";
+import { useJobUpdate, useSkills, useCategories } from "../hooks/useJobs";
 import {
   Button,
   Card,
@@ -65,14 +65,17 @@ const SHIFT_TYPE_OPTIONS = [
   { value: "flexible", label: "Linh hoạt" },
 ];
 
-export default function PostJob() {
-  console.log("PostJob component rendered");
+export default function EditJob() {
+  console.log("EditJob component rendered");
   const navigate = useNavigate();
+  const { jobId } = useParams();
+
+  const [jobData, setJobData] = useState(null);
+  const [jobLoading, setJobLoading] = useState(true);
 
   // Form state
   const [activeTab, setActiveTab] = useState("basic");
   const [showPreview, setShowPreview] = useState(false);
-  const [lastSaved, setLastSaved] = useState(null);
   const [fieldErrors, setFieldErrors] = useState({});
 
   // Modal states for adding items
@@ -112,13 +115,13 @@ export default function PostJob() {
   const [companyLoading, setCompanyLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Job creation hook
+  // Job update hook
   const {
-    createJob,
+    updateJob,
     loading: submitting,
     error: submitError,
     success,
-  } = useJobCreate();
+  } = useJobUpdate(jobId);
 
   // Skills and categories hooks
   const { categories: skillCategories, loading: categoriesLoading } =
@@ -213,45 +216,114 @@ export default function PostJob() {
     return tabOrder.indexOf(activeTab);
   };
 
-  // Load draft on mount
+  // Load job data on mount
   useEffect(() => {
-    const autoSaveKey = "postJob_draft";
-    const saved = localStorage.getItem(autoSaveKey);
-    if (saved) {
+    const loadJobData = async () => {
+      if (!jobId) {
+        setError("Không tìm thấy ID công việc");
+        setJobLoading(false);
+        return;
+      }
+
       try {
-        const draft = JSON.parse(saved);
-        if (draft.form && (draft.form.title || draft.form.description)) {
-          if (confirm("Bạn có bản nháp chưa lưu. Bạn có muốn tiếp tục?")) {
-            setForm(draft.form);
-            setLastSaved(new Date(draft.timestamp));
-          } else {
-            localStorage.removeItem(autoSaveKey);
+        setJobLoading(true);
+        const j = await jobsApi.getJobForManage(jobId);
+        if (j) {
+          // Normalize job data first (same logic as useJobManage hook)
+          const normalizeJobForEdit = (job) => {
+            if (!job) return job;
+            const copy = { ...job };
+
+            try {
+              // Normalize skills
+              if (Array.isArray(copy.job_skills)) {
+                copy.skill_ids = copy.job_skills.map((js) => js.skill_id);
+                copy.skills = copy.job_skills
+                  .map((js) => js.skills)
+                  .filter(Boolean);
+              }
+
+              // Normalize requirements
+              if (Array.isArray(copy.job_requirements)) {
+                copy.requirements = copy.job_requirements;
+              }
+
+              // Normalize benefits
+              if (Array.isArray(copy.job_benefits)) {
+                copy.benefits = copy.job_benefits;
+              }
+
+              // Normalize work arrangements
+              if (
+                copy.job_work_arrangements &&
+                typeof copy.job_work_arrangements === "object"
+              ) {
+                copy.work_arrangements = copy.job_work_arrangements;
+              }
+            } catch (e) {
+              console.warn("Failed to normalize job object for edit", e);
+            }
+
+            return copy;
+          };
+
+          const normalizedJob = normalizeJobForEdit(j);
+          setJobData(normalizedJob);
+
+          // Map fields from normalized job to form shape
+          setForm((prev) => ({
+            ...prev,
+            title: normalizedJob.title || "",
+            description: normalizedJob.description || "",
+            company_id:
+              normalizedJob.company_id ||
+              normalizedJob.companies?.id ||
+              prev.company_id,
+            location_id:
+              normalizedJob.location_id ||
+              normalizedJob.location?.id ||
+              normalizedJob.location_text ||
+              prev.location_id,
+            salary_min: normalizedJob.salary_range?.min || "",
+            salary_max: normalizedJob.salary_range?.max || "",
+            currency: normalizedJob.salary_range?.currency || "VND",
+            job_type: normalizedJob.job_type || "full_time",
+            experience_level: normalizedJob.experience_level || "",
+            expires_at: normalizedJob.expires_at
+              ? new Date(normalizedJob.expires_at).toISOString().slice(0, 16)
+              : "",
+            requirements: normalizedJob.requirements || prev.requirements,
+            benefits: normalizedJob.benefits || prev.benefits,
+            skill_ids: normalizedJob.skill_ids || prev.skill_ids,
+            work_arrangements:
+              normalizedJob.work_arrangements || prev.work_arrangements,
+          }));
+
+          // Set selectedSkillsData for preview from normalized skills
+          if (
+            Array.isArray(normalizedJob.skills) &&
+            normalizedJob.skills.length > 0
+          ) {
+            setSelectedSkillsData(normalizedJob.skills);
           }
+
+          // Set company if present
+          if (normalizedJob.companies) {
+            setCompany(normalizedJob.companies);
+          }
+        } else {
+          setError("Không tìm thấy công việc");
         }
-      } catch (e) {
-        console.error("Failed to load draft:", e);
+      } catch (err) {
+        console.error("Failed to load job for edit:", err);
+        setError(err?.message || "Không thể tải thông tin công việc");
+      } finally {
+        setJobLoading(false);
       }
-    }
-  }, []);
+    };
 
-  // Auto-save functionality
-  useEffect(() => {
-    const autoSaveKey = "postJob_draft";
-    const autoSaveInterval = setInterval(() => {
-      if (form.title || form.description) {
-        localStorage.setItem(
-          autoSaveKey,
-          JSON.stringify({
-            form,
-            timestamp: new Date().toISOString(),
-          })
-        );
-        setLastSaved(new Date());
-      }
-    }, 30000); // Auto-save every 30 seconds
-
-    return () => clearInterval(autoSaveInterval);
-  }, [form]);
+    loadJobData();
+  }, [jobId]);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -354,14 +426,6 @@ export default function PostJob() {
     [validateSingleField]
   );
 
-  // Debug: Log component mount
-  useEffect(() => {
-    console.log("PostJob component mounted");
-    return () => {
-      console.log("PostJob component unmounted");
-    };
-  }, []);
-
   // Load company on mount
   useEffect(() => {
     let mounted = true;
@@ -436,13 +500,6 @@ export default function PostJob() {
       }
     };
   }, []);
-
-  // Store initial tags separately
-  // tags removed
-
-  // Skill categories are now handled by useCategories hook
-
-  // Category search is now handled by useCategories hook
 
   // Skills are now handled by useSkills hook
 
@@ -871,24 +928,26 @@ export default function PostJob() {
   useEffect(() => {
     try {
       // eslint-disable-next-line no-undef
-      window.__debug_postjob_form = form;
+      window.__debug_editjob_form = form;
+      // eslint-disable-next-line no-undef
+      window.__debug_editjob_jobData = jobData;
       // eslint-disable-next-line no-undef
       window.__debug_selectedSkillsData = selectedSkillsData;
     } catch (e) {
       // ignore in non-browser env
     }
-  }, [form, selectedSkillsData]);
+  }, [form, jobData, selectedSkillsData]);
 
   // Log when form.skill_ids changes to help debug lost items
   useEffect(() => {
-    console.debug("PostJob: form.skill_ids changed:", form.skill_ids);
+    console.debug("EditJob: form.skill_ids changed:", form.skill_ids);
   }, [form.skill_ids]);
 
   // Expose submit-related state for debugging (modals / submitting)
   useEffect(() => {
     try {
       // eslint-disable-next-line no-undef
-      window.__debug_postjob_state = {
+      window.__debug_editjob_state = {
         submitting,
         showAddRequirementModal,
         showAddBenefitModal,
@@ -976,7 +1035,22 @@ export default function PostJob() {
     return errors;
   };
 
-  const handleCreateJob = async (e) => {
+  // Publish job to pending_approval
+  const handlePublishJob = async () => {
+    if (!jobId) return;
+
+    try {
+      setError(null);
+      await jobsApi.publishJobs({ job_ids: [jobId] });
+      alert("Đã gửi tin tuyển dụng để admin duyệt!");
+      navigate("/recruiter/jobs");
+    } catch (err) {
+      console.error("Failed to publish job:", err);
+      setError(err?.message || "Không thể gửi duyệt tin tuyển dụng");
+    }
+  };
+
+  const onSubmit = async (e) => {
     e.preventDefault();
     setError(null);
     setFieldErrors({});
@@ -988,18 +1062,10 @@ export default function PostJob() {
       return;
     }
 
-    // FAKE: Bỏ qua check verified - cho phép đăng tin không cần verify
-    // // Check company verification before submitting
-    // if (company && company.is_verified === false) {
-    //   setError('Công ty của bạn chưa được xác minh. Vui lòng liên hệ quản trị viên để xác minh công ty trước khi đăng tin tuyển dụng.')
-    //   return
-    // }
-
     try {
       const payload = {
         title: form.title.trim(),
         description: form.description.trim(),
-        company_id: form.company_id,
         location_id: form.location_id || null,
         salary_range:
           form.salary_min && form.salary_max
@@ -1074,24 +1140,13 @@ export default function PostJob() {
             : undefined,
       };
 
-      const response = await createJob(payload);
-
-      // Clear draft after successful submission
-      localStorage.removeItem("postJob_draft");
-      setLastSaved(null);
-      alert(
-        "Đã tạo tin tuyển dụng thành công! Tin sẽ được duyệt trước khi hiển thị."
-      );
-      const jobId = response?.id;
-      if (jobId) {
-        navigate(`/recruiter/jobs/${jobId}/manage`);
-      } else {
-        navigate("/recruiter/jobs");
-      }
+      await updateJob(payload);
+      alert("Đã cập nhật tin tuyển dụng thành công!");
+      navigate("/recruiter/jobs");
     } catch (err) {
-      console.error("Failed to create job:", err);
+      console.error("Failed to update job:", err);
       // Log server response body if available for easier debugging
-      console.error("Create job error data:", err?.data ?? err);
+      console.error("Update job error data:", err?.data ?? err);
       if (err?.data?.errors) {
         const errorMap = {};
         err.data.errors.forEach((e) => {
@@ -1107,284 +1162,53 @@ export default function PostJob() {
         setError(err.data.message);
       } else {
         setError(
-          err?.message || "Không thể tạo tin tuyển dụng. Vui lòng thử lại."
-        );
-      }
-
-      if (err?.status === 401) {
-        navigate(
-          "/login?role=recruiter&redirect=" +
-            encodeURIComponent(window.location.pathname)
+          err?.message || "Không thể cập nhật tin tuyển dụng. Vui lòng thử lại."
         );
       }
     }
   };
 
-  // Save as draft (create draft job)
-  const saveAsDraft = async () => {
-    try {
-      setError(null);
-      const payload = {
-        title: form.title.trim() || "Bản nháp chưa có tiêu đề",
-        description: form.description.trim() || "Bản nháp chưa có mô tả",
-        company_id: form.company_id,
-        location_id: form.location_id || null,
-        salary_range:
-          form.salary_min && form.salary_max
-            ? {
-                min: parseInt(form.salary_min, 10),
-                max: parseInt(form.salary_max, 10),
-                currency: form.currency || "VND",
-              }
-            : undefined,
-        job_type: form.job_type,
-        experience_level: form.experience_level
-          ? parseInt(form.experience_level, 10)
-          : null,
-        expires_at: form.expires_at
-          ? new Date(form.expires_at).toISOString()
-          : undefined,
-        requirements:
-          form.requirements.filter(
-            (req) => req.title?.trim() && req.requirement_type
-          ).length > 0
-            ? form.requirements
-                .filter((req) => req.title?.trim() && req.requirement_type)
-                .map((req) => ({
-                  requirement_type: req.requirement_type,
-                  title: req.title.trim(),
-                  description: req.description?.trim() || undefined,
-                  is_required: req.is_required !== false,
-                  level: req.level?.trim() || undefined,
-                  years_experience: req.years_experience
-                    ? parseInt(req.years_experience, 10)
-                    : undefined,
-                }))
-            : undefined,
-        benefits:
-          form.benefits.filter((ben) => ben.title?.trim() && ben.benefit_type)
-            .length > 0
-            ? form.benefits
-                .filter((ben) => ben.title?.trim() && ben.benefit_type)
-                .map((ben) => ({
-                  benefit_type: ben.benefit_type,
-                  title: ben.title.trim(),
-                  description: ben.description?.trim() || undefined,
-                  value_amount: ben.value_amount
-                    ? isNaN(Number(ben.value_amount))
-                      ? undefined
-                      : Number(ben.value_amount)
-                    : undefined,
-                  value_currency: ben.value_currency || "VND",
-                }))
-            : undefined,
-        skill_ids: form.skill_ids.length > 0 ? form.skill_ids : undefined,
-        work_arrangements:
-          form.work_arrangements.is_remote_allowed ||
-          form.work_arrangements.flexible_hours ||
-          form.work_arrangements.travel_requirement?.trim() ||
-          form.work_arrangements.overtime_expected ||
-          form.work_arrangements.shift_type
-            ? {
-                is_remote_allowed:
-                  form.work_arrangements.is_remote_allowed || false,
-                remote_percentage: form.work_arrangements.is_remote_allowed
-                  ? parseInt(form.work_arrangements.remote_percentage, 10) || 0
-                  : 0,
-                flexible_hours: form.work_arrangements.flexible_hours || false,
-                travel_requirement:
-                  form.work_arrangements.travel_requirement?.trim() ||
-                  undefined,
-                overtime_expected:
-                  form.work_arrangements.overtime_expected || false,
-                shift_type: form.work_arrangements.shift_type || undefined,
-              }
-            : undefined,
-      };
+  // Get action buttons based on job status
+  const getActionButtons = () => {
+    const currentStatus = jobData?.status;
 
-      const response = await createJob(payload);
-      alert("Đã lưu bản nháp thành công!");
-      navigate("/recruiter/jobs");
-    } catch (err) {
-      console.error("Failed to save draft:", err);
-      setError(err?.message || "Không thể lưu bản nháp. Vui lòng thử lại.");
-    }
-  };
-
-  // Publish job (create and publish)
-  const publishJob = async () => {
-    // First create the job as draft
-    const errors = validateForm();
-    if (Object.keys(errors).length > 0) {
-      setFieldErrors(errors);
-      setError("Vui lòng kiểm tra lại các trường đã nhập trước khi gửi duyệt.");
-      return;
-    }
-
-    try {
-      setError(null);
-      const payload = {
-        title: form.title.trim(),
-        description: form.description.trim(),
-        company_id: form.company_id,
-        location_id: form.location_id || null,
-        salary_range:
-          form.salary_min && form.salary_max
-            ? {
-                min: parseInt(form.salary_min, 10),
-                max: parseInt(form.salary_max, 10),
-                currency: form.currency || "VND",
-              }
-            : undefined,
-        job_type: form.job_type,
-        experience_level: form.experience_level
-          ? parseInt(form.experience_level, 10)
-          : null,
-        expires_at: form.expires_at
-          ? new Date(form.expires_at).toISOString()
-          : undefined,
-        requirements:
-          form.requirements.filter(
-            (req) => req.title?.trim() && req.requirement_type
-          ).length > 0
-            ? form.requirements
-                .filter((req) => req.title?.trim() && req.requirement_type)
-                .map((req) => ({
-                  requirement_type: req.requirement_type,
-                  title: req.title.trim(),
-                  description: req.description?.trim() || undefined,
-                  is_required: req.is_required !== false,
-                  level: req.level?.trim() || undefined,
-                  years_experience: req.years_experience
-                    ? parseInt(req.years_experience, 10)
-                    : undefined,
-                }))
-            : undefined,
-        benefits:
-          form.benefits.filter((ben) => ben.title?.trim() && ben.benefit_type)
-            .length > 0
-            ? form.benefits
-                .filter((ben) => ben.title?.trim() && ben.benefit_type)
-                .map((ben) => ({
-                  benefit_type: ben.benefit_type,
-                  title: ben.title.trim(),
-                  description: ben.description?.trim() || undefined,
-                  value_amount: ben.value_amount
-                    ? isNaN(Number(ben.value_amount))
-                      ? undefined
-                      : Number(ben.value_amount)
-                    : undefined,
-                  value_currency: ben.value_currency || "VND",
-                }))
-            : undefined,
-        skill_ids: form.skill_ids.length > 0 ? form.skill_ids : undefined,
-        work_arrangements:
-          form.work_arrangements.is_remote_allowed ||
-          form.work_arrangements.flexible_hours ||
-          form.work_arrangements.travel_requirement?.trim() ||
-          form.work_arrangements.overtime_expected ||
-          form.work_arrangements.shift_type
-            ? {
-                is_remote_allowed:
-                  form.work_arrangements.is_remote_allowed || false,
-                remote_percentage: form.work_arrangements.is_remote_allowed
-                  ? parseInt(form.work_arrangements.remote_percentage, 10) || 0
-                  : 0,
-                flexible_hours: form.work_arrangements.flexible_hours || false,
-                travel_requirement:
-                  form.work_arrangements.travel_requirement?.trim() ||
-                  undefined,
-                overtime_expected:
-                  form.work_arrangements.overtime_expected || false,
-                shift_type: form.work_arrangements.shift_type || undefined,
-              }
-            : undefined,
-      };
-
-      // Create job first
-      const response = await createJob(payload);
-      const jobId = response?.id;
-
-      if (jobId) {
-        // Then publish it
-        await jobsApi.publishJobs({ job_ids: [jobId] });
-        alert("Đã gửi tin tuyển dụng để admin duyệt!");
-        navigate("/recruiter/jobs");
-      }
-    } catch (err) {
-      console.error("Failed to publish job:", err);
-      setError(
-        err?.message || "Không thể gửi duyệt tin tuyển dụng. Vui lòng thử lại."
+    // If job is draft, show "Lưu thay đổi" and "Gửi duyệt"
+    if (currentStatus === "draft") {
+      return (
+        <>
+          <Button
+            variant="outline"
+            onClick={handlePublishJob}
+            disabled={submitting}
+          >
+            Gửi duyệt
+          </Button>
+          <Button
+            type="submit"
+            variant="primary"
+            disabled={submitting}
+            loading={submitting}
+          >
+            {submitting ? "Đang lưu..." : "Lưu thay đổi"}
+          </Button>
+        </>
       );
     }
-  };
 
-  const handleReset = () => {
-    if (confirm("Bạn có chắc chắn muốn xóa tất cả dữ liệu đã nhập?")) {
-      setForm({
-        title: "",
-        description: "",
-        company_id: company?.id || "",
-        location_id: "",
-        salary_min: "",
-        salary_max: "",
-        currency: "VND",
-        job_type: "full_time",
-        experience_level: "",
-        expires_at: "",
-        requirements: [],
-        benefits: [],
-        skill_ids: [],
-        // tags removed
-        work_arrangements: {
-          is_remote_allowed: false,
-          remote_percentage: 0,
-          flexible_hours: false,
-          travel_requirement: "",
-          overtime_expected: false,
-          shift_type: "",
-        },
-      });
-      setSelectedSkillsData([]);
-      // tags removed
-      setSelectedCategory(null);
-      setCategorySearch("");
-      setAvailableSkills([]);
-      setInitialSkills([]);
-      setSkillSearch("");
-      setSelectedProvince(null);
-      setProvinceSearch("");
-      setSelectedDistrict(null);
-      setDistrictSearch("");
-      setAvailableDistricts([]);
-      setInitialDistricts([]);
-      // tags removed
-      setError(null);
-      setFieldErrors({});
-      localStorage.removeItem("postJob_draft");
-      setLastSaved(null);
-    }
-  };
-
-  const handleSaveDraft = () => {
-    const autoSaveKey = "postJob_draft";
-    localStorage.setItem(
-      autoSaveKey,
-      JSON.stringify({
-        form,
-        timestamp: new Date().toISOString(),
-      })
+    // For approved or other statuses, only show "Lưu thay đổi"
+    return (
+      <Button
+        type="submit"
+        variant="primary"
+        disabled={submitting}
+        loading={submitting}
+      >
+        {submitting ? "Đang lưu..." : "Lưu thay đổi"}
+      </Button>
     );
-    setLastSaved(new Date());
-    alert("Đã lưu bản nháp thành công!");
   };
 
-  const clearDraft = () => {
-    localStorage.removeItem("postJob_draft");
-    setLastSaved(null);
-  };
-
-  if (companyLoading) {
+  if (jobLoading || companyLoading) {
     return (
       <div className="section">
         <JobFormSkeleton />
@@ -1392,7 +1216,7 @@ export default function PostJob() {
     );
   }
 
-  if (error && !company) {
+  if (error && !jobData) {
     return (
       <div className="section">
         <div
@@ -1406,10 +1230,10 @@ export default function PostJob() {
           <p style={{ color: "#c00", margin: 0 }}>{error}</p>
           <button
             className="btn primary"
-            onClick={() => navigate("/onboarding/company")}
+            onClick={() => navigate("/recruiter/jobs")}
             style={{ marginTop: "12px" }}
           >
-            Tạo công ty
+            Quay lại danh sách
           </button>
         </div>
       </div>
@@ -1457,7 +1281,7 @@ export default function PostJob() {
   const completionPercentage = calculateCompletion();
 
   return (
-    <div className="section post-job-page">
+    <div className="section edit-job-page">
       {/* Breadcrumb Navigation */}
       <div className="breadcrumb-nav">
         <Button
@@ -1476,23 +1300,32 @@ export default function PostJob() {
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-2xl font-bold text-gray-900">
-                Đăng tin tuyển dụng
+                Chỉnh sửa tin tuyển dụng
               </h1>
               <p className="text-sm text-gray-600 mt-1">
-                Tạo tin tuyển dụng hấp dẫn để thu hút ứng viên phù hợp
+                Cập nhật thông tin chi tiết về vị trí công việc
               </p>
             </div>
+            <Badge
+              variant={
+                jobData?.status === "approved"
+                  ? "success"
+                  : jobData?.status === "draft"
+                  ? "default"
+                  : "warning"
+              }
+            >
+              {jobData?.status === "approved"
+                ? "Đã duyệt"
+                : jobData?.status === "draft"
+                ? "Nháp"
+                : "Chờ duyệt"}
+            </Badge>
           </div>
         </div>
 
         <QuickActionsBar
           actions={[
-            {
-              label: "Lưu nháp",
-              icon: "💾",
-              onClick: handleSaveDraft,
-              variant: "ghost",
-            },
             {
               label: "Xem trước",
               icon: "👁️",
@@ -1500,7 +1333,6 @@ export default function PostJob() {
               variant: "outline",
             },
           ]}
-          lastSaved={lastSaved}
         />
       </div>
 
@@ -1519,8 +1351,6 @@ export default function PostJob() {
                   style={{ width: `${completionPercentage}%` }}
                 />
               </div>
-
-              {/* per-step visual removed - keep only overall progress bar */}
             </div>
           </FieldCard>
 
@@ -1546,7 +1376,7 @@ export default function PostJob() {
             <nav
               role="tablist"
               className="flex space-x-1 p-1 bg-gray-100 rounded-lg"
-              aria-label="Job posting form sections"
+              aria-label="Job editing form sections"
             >
               {[
                 { id: "basic", label: "Thông tin cơ bản", icon: "📄" },
@@ -1583,7 +1413,7 @@ export default function PostJob() {
         <JobFormColumn>
           {/* Main Content Area */}
           <JobFormSection>
-            <form className="card" onSubmit={handleCreateJob}>
+            <form className="card" onSubmit={onSubmit}>
               {/* Tab: Basic Info */}
               {activeTab === "basic" && (
                 <>
@@ -2186,28 +2016,7 @@ export default function PostJob() {
 
               {/* Form Actions */}
               <div className="mt-8 flex justify-end space-x-3">
-                <Button
-                  variant="ghost"
-                  onClick={handleReset}
-                  disabled={submitting}
-                >
-                  Xóa tất cả
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={saveAsDraft}
-                  disabled={submitting}
-                >
-                  Lưu nháp
-                </Button>
-                <Button
-                  variant="primary"
-                  onClick={publishJob}
-                  disabled={submitting}
-                  loading={submitting}
-                >
-                  {submitting ? "Đang gửi..." : "Gửi duyệt"}
-                </Button>
+                {getActionButtons()}
               </div>
             </form>
           </JobFormSection>

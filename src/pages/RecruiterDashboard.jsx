@@ -258,6 +258,12 @@ export default function RecruiterDashboard() {
   useEffect(() => {
     let active = true;
     const loadJobs = async () => {
+      // Only load jobs if user is authenticated and is a recruiter
+      const user = getAuthUser();
+      if (!user || user.role !== 'recruiter') {
+        return;
+      }
+
       setJobsLoading(true);
       try {
         const response = await JobService.myJobs({ page: 1, limit: 100 });

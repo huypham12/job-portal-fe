@@ -10,6 +10,7 @@ import RequireAdmin from "./auth/RequireAdmin.jsx"
 const Home = React.lazy(() => import("./pages/Home.jsx"))
 const JobDetail = React.lazy(() => import("./pages/JobDetail.jsx"))
 const PostJob = React.lazy(() => import("./pages/PostJob.jsx"))
+const EditJob = React.lazy(() => import("./pages/EditJob.jsx"))
 const Login = React.lazy(() => import("./pages/Login.jsx"))
 const ApplyJob = React.lazy(() => import("./pages/ApplyJob.jsx"))
 const Register = React.lazy(() => import("./pages/Register.jsx"))
@@ -50,6 +51,7 @@ const CompanyList = React.lazy(() => import("./pages/CompanyList.jsx"))
 const CompanyDetailsPage = React.lazy(() => import("./pages/CompanyDetailsPage.jsx"))
 const CandidateRecommendations = React.lazy(() => import("./pages/Recruiter/CandidateRecommendations.jsx"))
 const JobCandidates = React.lazy(() => import("./pages/Recruiter/JobCandidates.jsx"))
+const JobView = React.lazy(() => import("./pages/Recruiter/JobView.jsx"))
 
 import "./index.css"
 
@@ -118,6 +120,11 @@ const router = createBrowserRouter(
           <PostJob />
         </RequireRecruiter>
       ) },
+      { path: 'edit-job/:jobId', element: (
+        <RequireRecruiter>
+          <EditJob />
+        </RequireRecruiter>
+      ) },
       { path: 'recruiter/dashboard', element: (
         <RequireRecruiter>
           <RecruiterDashboard />
@@ -143,6 +150,11 @@ const router = createBrowserRouter(
       { path: 'recruiter/jobs', element: (
         <RequireRecruiter>
           <RecruiterDashboard />
+        </RequireRecruiter>
+      ) },
+      { path: 'recruiter/jobs/:id/view', element: (
+        <RequireRecruiter>
+          <JobView />
         </RequireRecruiter>
       ) },
       { path: 'recruiter/jobs/:id/manage', element: (

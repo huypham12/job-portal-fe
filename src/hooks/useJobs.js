@@ -242,21 +242,42 @@ export function useJobManage(jobId) {
       // Normalize job shape from backend:
       // - job.job_skills: [{ job_id, skill_id, skills: {id,name} }] => job.skill_ids: [id], job.skills: [{id,name}]
       // - job.job_categories: [{ job_id, category_id, categories: {id,name,slug,type} }] => job.category_ids: [id], job.categories: [{...}]
+      // - job.job_requirements: [...] => job.requirements: [...]
+      // - job.job_benefits: [...] => job.benefits: [...]
+      // - job.job_work_arrangements: {...} => job.work_arrangements: {...}
       const normalizeJob = (j) => {
         if (!j) return j;
         const copy = { ...j };
         try {
+          // Normalize skills
           if (Array.isArray(copy.job_skills)) {
             copy.skill_ids = copy.job_skills.map((js) => js.skill_id);
             copy.skills = copy.job_skills
               .map((js) => js.skills)
               .filter(Boolean);
           }
+
+          // Normalize categories
           if (Array.isArray(copy.job_categories)) {
             copy.category_ids = copy.job_categories.map((jc) => jc.category_id);
             copy.categories = copy.job_categories
               .map((jc) => jc.categories)
               .filter(Boolean);
+          }
+
+          // Normalize requirements
+          if (Array.isArray(copy.job_requirements)) {
+            copy.requirements = copy.job_requirements;
+          }
+
+          // Normalize benefits
+          if (Array.isArray(copy.job_benefits)) {
+            copy.benefits = copy.job_benefits;
+          }
+
+          // Normalize work arrangements
+          if (copy.job_work_arrangements && typeof copy.job_work_arrangements === 'object') {
+            copy.work_arrangements = copy.job_work_arrangements;
           }
         } catch (e) {
           console.warn("Failed to normalize job object", e);
@@ -294,6 +315,26 @@ export function useJobManage(jobId) {
     [jobId, job, fetchJob]
   );
 
+  const publish = useCallback(
+    async () => {
+      if (!jobId) return;
+
+      try {
+        const result = await jobsApi.publishJobs({ job_ids: [jobId] });
+        // Optimistic update - draft -> pending_approval
+        if (job && job.status === 'draft') {
+          setJob((prev) => ({ ...prev, status: 'pending_approval' }));
+        }
+        return result;
+      } catch (err) {
+        // Refresh data on error
+        await fetchJob();
+        throw err;
+      }
+    },
+    [jobId, job, fetchJob]
+  );
+
   const deleteJob = useCallback(async () => {
     if (!jobId) return;
 
@@ -318,6 +359,7 @@ export function useJobManage(jobId) {
     error,
     fetchJob,
     updateStatus,
+    publish,
     deleteJob,
   };
 }
@@ -335,7 +377,23 @@ export function useBulkJobActions() {
     setSuccess(false);
 
     try {
-      const result = await jobsApi.bulkJobActions({ action, job_ids: jobIds });
+      // Normalize and validate job IDs before sending to backend
+      const uuidRe =
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+      const ids =
+        Array.isArray(jobIds) && jobIds.length > 0
+          ? jobIds.map((id) => String(id).trim()).filter((id) => uuidRe.test(id))
+          : [];
+
+      if (ids.length === 0) {
+        throw new Error("No valid job IDs provided for bulk action");
+      }
+      if (ids.length > 50) {
+        throw new Error("Maximum 50 jobs allowed per bulk request");
+      }
+
+      console.debug("Bulk action payload:", { action, job_ids: ids });
+      const result = await jobsApi.bulkJobActions({ action, job_ids: ids });
       setSuccess(true);
       return result;
     } catch (err) {
@@ -356,10 +414,76 @@ export function useBulkJobActions() {
     (jobIds) => performBulkAction("delete", jobIds),
     [performBulkAction]
   );
-  const bulkPublish = useCallback(
-    (jobIds) => performBulkAction("publish", jobIds),
-    [performBulkAction]
-  );
+  const bulkPublish = useCallback(async (jobIds) => {
+    setLoading(true);
+    setError(null);
+    setSuccess(false);
+
+    try {
+      // Normalize and validate job IDs before sending to backend
+      const uuidRe =
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+      const ids =
+        Array.isArray(jobIds) && jobIds.length > 0
+          ? jobIds.map((id) => String(id).trim()).filter((id) => uuidRe.test(id))
+          : [];
+
+      if (ids.length === 0) {
+        throw new Error("No valid job IDs provided for publish action");
+      }
+      if (ids.length > 50) {
+        throw new Error("Maximum 50 jobs allowed per publish request");
+      }
+
+      console.debug("Publish action payload:", { job_ids: ids });
+      const result = await jobsApi.publishJobs({ job_ids: ids });
+      setSuccess(true);
+      return result;
+    } catch (err) {
+      const errorMessage =
+        err.data?.message || err.message || `Failed to publish jobs`;
+      setError(errorMessage);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const bulkOpen = useCallback(async (jobIds) => {
+    setLoading(true);
+    setError(null);
+    setSuccess(false);
+
+    try {
+      // Validate job IDs
+      const uuidRe =
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+      const ids =
+        Array.isArray(jobIds) && jobIds.length > 0
+          ? jobIds.map((id) => String(id).trim()).filter((id) => uuidRe.test(id))
+          : [];
+
+      if (ids.length === 0) {
+        throw new Error("No valid job IDs provided for open action");
+      }
+      if (ids.length > 50) {
+        throw new Error("Maximum 50 jobs allowed per open request");
+      }
+
+      console.debug("Bulk open action payload:", { job_ids: ids });
+      // Use bulk API action 'open' (backend supports it)
+      const result = await performBulkAction("open", ids);
+      setSuccess(true);
+      return result;
+    } catch (err) {
+      const errorMessage =
+        err.data?.message || err.message || `Failed to open jobs`;
+      setError(errorMessage);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   const bulkExtendExpiry = useCallback(async (jobIds, newExpiresAt) => {
     setLoading(true);
@@ -396,6 +520,7 @@ export function useBulkJobActions() {
     bulkClose,
     bulkDelete,
     bulkPublish,
+    bulkOpen,
     bulkExtendExpiry,
     reset,
   };

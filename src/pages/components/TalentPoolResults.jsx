@@ -231,21 +231,116 @@ function MatchingCandidateCard({ candidate, isSelected, onSelect, onSave, select
           </div>
         </div>
 
-        {/* Matching Factors */}
-        <div className="matching-factors">
-          <h5>Lý do phù hợp:</h5>
-          <div className="factors-list">
-            {Object.entries(explanation).slice(0, 3).map(([factor, score]) => (
-              <Badge key={factor} variant="info" size="sm">
-                {factor}: {Math.round(score * 100) / 100}
-              </Badge>
-            ))}
-            {Object.keys(explanation).length > 3 && (
-              <Badge variant="outline" size="sm">
-                +{Object.keys(explanation).length - 3} yếu tố khác
-              </Badge>
-            )}
+        {/* Matching Explanation */}
+        <div className="matching-explanation">
+          {/* Confidence & Quality Badges */}
+          <div className="explanation-badges">
+            <Badge
+              variant={getConfidenceVariant(explanation.confidence)}
+              size="sm"
+            >
+              Độ tin cậy: {getConfidenceLabel(explanation.confidence)}
+            </Badge>
+            <Badge
+              variant={getQualityVariant(explanation.quality?.overall)}
+              size="sm"
+            >
+              Chất lượng: {getQualityLabel(explanation.quality?.overall)}
+            </Badge>
           </div>
+
+          {/* Human-readable Reasons */}
+          {explanation.reasons?.length > 0 && (
+            <div className="match-reasons">
+              <h6>Lý do phù hợp:</h6>
+              <ul className="reasons-list">
+                {explanation.reasons.slice(0, 3).map((reason, index) => (
+                  <li key={index}>{reason}</li>
+                ))}
+                {explanation.reasons.length > 3 && (
+                  <li className="more-reasons">+{explanation.reasons.length - 3} lý do khác</li>
+                )}
+              </ul>
+            </div>
+          )}
+
+          {/* Dimensions Breakdown */}
+          {explanation.dimensions && (
+            <div className="dimensions-breakdown">
+              <h6>Chi tiết điểm số:</h6>
+              <div className="dimensions-grid">
+                {Object.entries(explanation.dimensions).map(([dimension, score]) => (
+                  <div key={dimension} className="dimension-item">
+                    <div className="dimension-label">
+                      <span className="dimension-name">{getDimensionLabel(dimension)}</span>
+                      <span className="dimension-score">{Math.round(score * 100)}%</span>
+                    </div>
+                    <div className="dimension-bar">
+                      <div
+                        className="dimension-fill"
+                        style={{
+                          width: `${score * 100}%`,
+                          backgroundColor: getDimensionColor(score)
+                        }}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Strengths & Concerns */}
+          {(explanation.quality?.strengths?.length > 0 || explanation.quality?.concerns?.length > 0) && (
+            <div className="quality-details">
+              {explanation.quality.strengths?.length > 0 && (
+                <div className="strengths">
+                  <h6>Điểm mạnh:</h6>
+                  <ul>
+                    {explanation.quality.strengths.slice(0, 2).map((strength, index) => (
+                      <li key={index} className="strength">{strength}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {explanation.quality.concerns?.length > 0 && (
+                <div className="concerns">
+                  <h6>Cần lưu ý:</h6>
+                  <ul>
+                    {explanation.quality.concerns.slice(0, 2).map((concern, index) => (
+                      <li key={index} className="concern">{concern}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Recommendations */}
+          {explanation.quality?.recommendations?.length > 0 && (
+            <div className="recommendations">
+              <h6>Khuyến nghị:</h6>
+              <ul>
+                {explanation.quality.recommendations.slice(0, 2).map((rec, index) => (
+                  <li key={index} className="recommendation">{rec}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {/* Data Completeness */}
+          {explanation.data_completeness !== undefined && (
+            <div className="data-completeness">
+              <span>Độ đầy đủ hồ sơ: {Math.round(explanation.data_completeness * 100)}%</span>
+              <div className="completeness-bar">
+                <div
+                  className="completeness-fill"
+                  style={{ width: `${explanation.data_completeness * 100}%` }}
+                />
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Skills Preview */}
@@ -325,6 +420,65 @@ function MatchingCandidateCard({ candidate, isSelected, onSelect, onSave, select
       </CardBody>
     </Card>
   )
+}
+
+// Helper functions for explanation display
+const getConfidenceVariant = (confidence) => {
+  switch (confidence) {
+    case 'high': return 'success'
+    case 'medium': return 'warning'
+    case 'low': return 'danger'
+    default: return 'info'
+  }
+}
+
+const getConfidenceLabel = (confidence) => {
+  switch (confidence) {
+    case 'high': return 'Cao'
+    case 'medium': return 'Trung bình'
+    case 'low': return 'Thấp'
+    default: return 'Không xác định'
+  }
+}
+
+const getQualityVariant = (quality) => {
+  switch (quality) {
+    case 'excellent': return 'success'
+    case 'good': return 'primary'
+    case 'fair': return 'warning'
+    case 'poor': return 'danger'
+    default: return 'info'
+  }
+}
+
+const getQualityLabel = (quality) => {
+  switch (quality) {
+    case 'excellent': return 'Xuất sắc'
+    case 'good': return 'Tốt'
+    case 'fair': return 'Khá'
+    case 'poor': return 'Yếu'
+    default: return 'Không xác định'
+  }
+}
+
+const getDimensionLabel = (dimension) => {
+  const labels = {
+    experience: 'Kinh nghiệm',
+    location: 'Địa điểm',
+    skills: 'Kỹ năng',
+    preferences: 'Sở thích',
+    activity: 'Hoạt động',
+    completeness: 'Đầy đủ hồ sơ'
+  }
+  return labels[dimension] || dimension
+}
+
+const getDimensionColor = (score) => {
+  if (score >= 0.8) return '#10b981' // green
+  if (score >= 0.6) return '#3b82f6' // blue
+  if (score >= 0.4) return '#f59e0b' // yellow
+  if (score >= 0.2) return '#f97316' // orange
+  return '#ef4444' // red
 }
 
 export default TalentPoolResults

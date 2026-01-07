@@ -234,7 +234,10 @@ export const JobService = {
     if (process.env.NODE_ENV === "development") {
       console.log("JobService.list - Filters object:", filters);
       console.log("JobService.list - Query string:", query);
-      console.log("JobService.list - Full URL:", `/api/search/jobs/list${query}`);
+      console.log(
+        "JobService.list - Full URL:",
+        `/api/search/jobs/list${query}`
+      );
     }
     return api.get(`/api/search/jobs/list${query}`);
   },
@@ -677,25 +680,40 @@ export const MatchingService = {
    */
   matchCandidates: (jobId, filters = {}) => {
     const params = new URLSearchParams();
-    params.append('size', String(filters.size || 50));
+    params.append("size", String(filters.size || 50));
 
     // Build filters query string
-    if (filters.minScore !== undefined) params.append('min_score', String(filters.minScore));
-    if (filters.location) params.append('location', filters.location);
-    if (filters.experienceMin !== undefined) params.append('experience_min', String(filters.experienceMin));
-    if (filters.experienceMax !== undefined) params.append('experience_max', String(filters.experienceMax));
-    if (filters.education) params.append('education_level', filters.education);
+    if (filters.minScore !== undefined)
+      params.append("min_score", String(filters.minScore));
+    if (filters.location) params.append("location", filters.location);
+    if (filters.experienceMin !== undefined)
+      params.append("experience_min", String(filters.experienceMin));
+    if (filters.experienceMax !== undefined)
+      params.append("experience_max", String(filters.experienceMax));
+    if (filters.education) params.append("education_level", filters.education);
 
     // Add any additional filters
     Object.entries(filters).forEach(([key, value]) => {
-      if (value !== undefined && value !== null &&
-          !['size', 'minScore', 'location', 'experienceMin', 'experienceMax', 'education'].includes(key)) {
+      if (
+        value !== undefined &&
+        value !== null &&
+        ![
+          "size",
+          "minScore",
+          "location",
+          "experienceMin",
+          "experienceMax",
+          "education",
+        ].includes(key)
+      ) {
         params.append(key, String(value));
       }
     });
 
     const query = params.toString();
-    return api.get(`/api/matching/job/${jobId}/candidates${query ? `?${query}` : ''}`);
+    return api.get(
+      `/api/matching/job/${jobId}/candidates${query ? `?${query}` : ""}`
+    );
   },
 };
 

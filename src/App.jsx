@@ -22,7 +22,7 @@ export default function App() {
   const location = useLocation();
   const isProfileScreen = location.pathname.startsWith("/profile");
   const isRecruiterScreen = location.pathname.startsWith("/recruiter");
-  const isPostJobPage = location.pathname === "/post-job";
+  const isPostJobPage = location.pathname === "/post-job" || location.pathname.startsWith("/edit-job/");
   const isRecruiterPage = isRecruiterScreen || isPostJobPage;
 
   const fetchProfileMeta = async () => {
@@ -87,6 +87,7 @@ export default function App() {
     "/recruiter/change-password",
     "/onboarding/company",
     "/post-job",
+    "/edit-job",
   ];
   const employerRoles = ["recruiter"];
 

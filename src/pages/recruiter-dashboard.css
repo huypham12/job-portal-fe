@@ -464,6 +464,251 @@
   gap: 6px;
 }
 
+/* Matching Explanation */
+.matching-explanation {
+  margin-bottom: 16px;
+  background: #f8fafc;
+  border-radius: 8px;
+  padding: 16px;
+  border: 1px solid #e2e8f0;
+}
+
+.explanation-badges {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+.match-reasons {
+  margin-bottom: 12px;
+}
+
+.match-reasons h6 {
+  margin: 0 0 8px 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #374151;
+}
+
+.reasons-list {
+  margin: 0;
+  padding-left: 20px;
+  list-style: none;
+}
+
+.reasons-list li {
+  padding: 2px 0;
+  font-size: 13px;
+  color: #475569;
+  position: relative;
+}
+
+.reasons-list li:before {
+  content: "✓";
+  color: #10b981;
+  font-weight: bold;
+  position: absolute;
+  left: -16px;
+}
+
+.more-reasons {
+  font-style: italic;
+  color: #64748b;
+}
+
+.dimensions-breakdown {
+  margin-bottom: 12px;
+}
+
+.dimensions-breakdown h6 {
+  margin: 0 0 8px 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #374151;
+}
+
+.dimensions-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.dimension-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.dimension-label {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+  font-weight: 500;
+  color: #374151;
+}
+
+.dimension-name {
+  flex: 1;
+}
+
+.dimension-score {
+  font-weight: 600;
+  color: #1e293b;
+  min-width: 35px;
+  text-align: right;
+}
+
+.dimension-bar {
+  height: 6px;
+  background: #e2e8f0;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.dimension-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.3s ease;
+}
+
+.quality-details {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 12px;
+}
+
+.strengths, .concerns {
+  padding: 8px;
+  border-radius: 6px;
+}
+
+.strengths {
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+}
+
+.concerns {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+}
+
+.strengths h6, .concerns h6 {
+  margin: 0 0 6px 0;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.strengths h6 {
+  color: #166534;
+}
+
+.concerns h6 {
+  color: #991b1b;
+}
+
+.strengths ul, .concerns ul {
+  margin: 0;
+  padding-left: 16px;
+  list-style: none;
+}
+
+.strengths li, .concerns li {
+  font-size: 12px;
+  line-height: 1.4;
+  padding: 2px 0;
+}
+
+.strength {
+  color: #166534;
+  position: relative;
+}
+
+.strength:before {
+  content: "✓";
+  color: #16a34a;
+  font-weight: bold;
+  position: absolute;
+  left: -12px;
+}
+
+.concern {
+  color: #991b1b;
+  position: relative;
+}
+
+.concern:before {
+  content: "⚠";
+  position: absolute;
+  left: -12px;
+}
+
+.recommendations {
+  padding: 8px;
+  background: #fefce8;
+  border: 1px solid #fde047;
+  border-radius: 6px;
+  margin-bottom: 12px;
+}
+
+.recommendations h6 {
+  margin: 0 0 6px 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: #92400e;
+}
+
+.recommendations ul {
+  margin: 0;
+  padding-left: 16px;
+  list-style: none;
+}
+
+.recommendations li {
+  font-size: 12px;
+  color: #92400e;
+  line-height: 1.4;
+  padding: 2px 0;
+  position: relative;
+}
+
+.recommendations li:before {
+  content: "💡";
+  position: absolute;
+  left: -12px;
+}
+
+.data-completeness {
+  background: #f8fafc;
+  padding: 8px 12px;
+  border-radius: 6px;
+  border: 1px solid #e2e8f0;
+}
+
+.data-completeness span {
+  display: block;
+  font-size: 13px;
+  font-weight: 500;
+  color: #374151;
+  margin-bottom: 6px;
+}
+
+.completeness-bar {
+  height: 8px;
+  background: #e2e8f0;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.completeness-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #3b82f6, #10b981);
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
 .candidate-skills {
   display: flex;
   flex-wrap: wrap;
