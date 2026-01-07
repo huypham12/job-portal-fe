@@ -24,7 +24,8 @@ export const adminApi = {
     if (params.deleted !== undefined && params.deleted !== null && params.deleted !== '') {
       queryParams.append('deleted', String(params.deleted))
     }
-    
+    // cache-busting to avoid 304 Not Modified from server-side ETag for API responses
+    queryParams.append('_t', String(Date.now()))
     const query = queryParams.toString()
     return api.get(`/api/admin/users${query ? `?${query}` : ''}`)
   },
@@ -67,7 +68,8 @@ export const adminApi = {
     if (params.search) queryParams.append('search', params.search)
     if (params.status) queryParams.append('status', params.status)
     if (params.deleted !== undefined) queryParams.append('deleted', params.deleted)
-    
+    // cache-busting to avoid returning 304 from proxies/servers
+    queryParams.append('_t', String(Date.now()))
     const query = queryParams.toString()
     return api.get(`/api/admin/jobs${query ? `?${query}` : ''}`)
   },
@@ -80,7 +82,8 @@ export const adminApi = {
     const queryParams = new URLSearchParams()
     if (params.page) queryParams.append('page', params.page)
     if (params.limit) queryParams.append('limit', params.limit)
-    
+    // cache-busting
+    queryParams.append('_t', String(Date.now()))
     const query = queryParams.toString()
     return api.get(`/api/admin/jobs/pending${query ? `?${query}` : ''}`)
   },

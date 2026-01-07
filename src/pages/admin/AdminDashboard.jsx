@@ -27,6 +27,9 @@ export default function AdminDashboard() {
         adminApi.getAllUsers({ page: 1, limit: 100, verified: false }),
       ]);
 
+      // backend response shape: { message, data: { ... } }
+      // the frontend fetch utility returns the parsed JSON body directly,
+      // so payload is available at response.data
       const jobsData = jobsRes?.data?.jobs || [];
       const activeJobsCount = jobsData.filter(
         (j) => j.status === "approved" && !j.deleted

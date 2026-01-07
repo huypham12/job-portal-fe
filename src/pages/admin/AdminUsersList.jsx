@@ -60,18 +60,28 @@ export default function AdminUsersList() {
     setLoading(true);
     setError(null);
     try {
+      // Normalize filter values: convert empty strings to undefined so adminApi omits them
+      const normalizedVerified =
+        filters.verified === "" ? undefined : filters.verified;
+      const normalizedDeleted =
+        filters.deleted === "" ? undefined : filters.deleted;
+      const normalizedRole = filters.role === "" ? undefined : filters.role;
+      const normalizedSearch =
+        filters.search && filters.search.trim()
+          ? filters.search.trim()
+          : undefined;
+
       const params = {
         page: currentPage,
         limit: PAGE_SIZE,
-        ...(filters.search &&
-          filters.search.trim() && { search: filters.search.trim() }),
-        ...(filters.role && filters.role !== "" && { role: filters.role }),
-        // Chỉ gửi verified nếu có giá trị (không phải empty string)
-        ...(filters.verified &&
-          filters.verified !== "" && { verified: filters.verified }),
-        // Chỉ gửi deleted nếu có giá trị (không phải empty string)
-        ...(filters.deleted &&
-          filters.deleted !== "" && { deleted: filters.deleted }),
+        ...(normalizedSearch ? { search: normalizedSearch } : {}),
+        ...(normalizedRole ? { role: normalizedRole } : {}),
+        ...(normalizedVerified !== undefined
+          ? { verified: normalizedVerified }
+          : {}),
+        ...(normalizedDeleted !== undefined
+          ? { deleted: normalizedDeleted }
+          : {}),
       };
 
       console.log("Fetching users with params:", params);
