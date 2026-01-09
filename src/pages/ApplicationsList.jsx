@@ -1,302 +1,401 @@
-import React, { useState, useEffect, useCallback } from 'react'
-import { useNavigate, useParams, Link } from 'react-router-dom'
-import { ApplicationService } from '../lib/api.js'
-import { JobService } from '../lib/api.js'
-import { Button, Card, CardBody, Badge, Input, Select, ConfirmModal } from '../components/shared'
-import CompareModal from '../components/CompareModal'
-import '../styles/shared.css'
-import './ApplicationsList.css'
+import React, { useState, useEffect, useCallback } from "react";
+import { useNavigate, useParams, Link } from "react-router-dom";
+import { ApplicationService } from "../lib/api.js";
+import { JobService } from "../lib/api.js";
+import {
+  Button,
+  Card,
+  CardBody,
+  Badge,
+  Input,
+  Select,
+  ConfirmModal,
+} from "../components/shared";
+import CompareModal from "../components/CompareModal";
+import {
+  STATUS_LABELS,
+  STATUS_COLORS,
+  APPLICATION_STATUSES,
+  normalizeStatus,
+} from "../constants/applicationStatuses";
+import { useSocket } from "../hooks/useSocket";
+import "../styles/shared.css";
+import "./ApplicationsList.css";
 
-const PAGE_SIZE = 20
+const PAGE_SIZE = 20;
 
 const STATUS_OPTIONS = [
-  { value: '', label: 'Tất cả' },
-  { value: 'pending', label: 'Đang chờ' },
-  { value: 'reviewed', label: 'Đã xem' },
-  { value: 'accepted', label: 'Chấp nhận' },
-  { value: 'rejected', label: 'Từ chối' },
-  { value: 'withdrawn', label: 'Đã rút' }
-]
-
-const STATUS_LABELS = {
-  pending: 'Đang chờ',
-  reviewed: 'Đã xem',
-  accepted: 'Chấp nhận',
-  rejected: 'Từ chối',
-  withdrawn: 'Đã rút'
-}
-
-const STATUS_COLORS = {
-  pending: 'default',
-  reviewed: 'info',
-  accepted: 'success',
-  rejected: 'danger',
-  withdrawn: 'default'
-}
+  { value: "", label: "Tất cả" },
+  {
+    value: APPLICATION_STATUSES.APPLIED,
+    label: STATUS_LABELS[APPLICATION_STATUSES.APPLIED],
+  },
+  {
+    value: APPLICATION_STATUSES.REVIEWED,
+    label: STATUS_LABELS[APPLICATION_STATUSES.REVIEWED],
+  },
+  {
+    value: APPLICATION_STATUSES.INTERVIEWING,
+    label: STATUS_LABELS[APPLICATION_STATUSES.INTERVIEWING],
+  },
+  {
+    value: APPLICATION_STATUSES.ACCEPTED,
+    label: STATUS_LABELS[APPLICATION_STATUSES.ACCEPTED],
+  },
+  {
+    value: APPLICATION_STATUSES.REJECTED,
+    label: STATUS_LABELS[APPLICATION_STATUSES.REJECTED],
+  },
+  {
+    value: APPLICATION_STATUSES.WITHDRAWN,
+    label: STATUS_LABELS[APPLICATION_STATUSES.WITHDRAWN],
+  },
+];
 
 const SORT_OPTIONS = [
-  { value: 'applied_at', label: 'Mới nhất' },
-  { value: 'name', label: 'Theo tên' },
-  { value: 'rating', label: 'Theo rating' }
-]
+  { value: "applied_at", label: "Mới nhất" },
+  { value: "name", label: "Theo tên" },
+];
 
 function formatDate(dateString) {
-  if (!dateString) return '--'
+  if (!dateString) return "--";
   try {
-    const date = new Date(dateString)
-    return date.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })
+    const date = new Date(dateString);
+    return date.toLocaleDateString("vi-VN", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    });
   } catch {
-    return '--'
+    return "--";
   }
 }
 
 function getInitials(name) {
-  if (!name) return '?'
-  const parts = name.trim().split(' ')
+  if (!name) return "?";
+  const parts = name.trim().split(" ");
   if (parts.length >= 2) {
-    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
   }
-  return name[0].toUpperCase()
-}
-
-function renderRating(rating) {
-  if (!rating || rating <= 0) return '--'
-  const validRating = Math.min(5, Math.max(1, Math.floor(rating)))
-  const filled = '★'.repeat(validRating)
-  const empty = '☆'.repeat(5 - validRating)
-  return filled + empty
+  return name[0].toUpperCase();
 }
 
 export default function ApplicationsList() {
-  const navigate = useNavigate()
-  const { jobId } = useParams()
-  const [applications, setApplications] = useState([])
-  const [stats, setStats] = useState(null)
-  const [job, setJob] = useState(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
-  const [hasAccess, setHasAccess] = useState(true)
-  const [currentPage, setCurrentPage] = useState(1)
-  const [statusFilter, setStatusFilter] = useState('')
-  const [stageFilter, setStageFilter] = useState('')
-  const [searchQuery, setSearchQuery] = useState('')
-  const [sortBy, setSortBy] = useState('applied_at')
-  const [order, setOrder] = useState('desc')
-  const [viewMode, setViewMode] = useState('table')
-  const [selectedApps, setSelectedApps] = useState([])
-  const [showBulkConfirm, setShowBulkConfirm] = useState(false)
-  const [bulkAction, setBulkAction] = useState(null)
-  const [showCompareModal, setShowCompareModal] = useState(false)
-  const [compareCandidates, setCompareCandidates] = useState([])
-  const [pagination, setPagination] = useState({ page: 1, limit: PAGE_SIZE, total: 0, total_pages: 1 })
-  const [shortlistedIds, setShortlistedIds] = useState(new Set())
+  const navigate = useNavigate();
+  const { jobId } = useParams();
+  const [applications, setApplications] = useState([]);
+  const [stats, setStats] = useState(null);
+  const [job, setJob] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [hasAccess, setHasAccess] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [statusFilter, setStatusFilter] = useState("");
+  const [stageFilter, setStageFilter] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [sortBy, setSortBy] = useState("applied_at");
+  const [order, setOrder] = useState("desc");
+  const [viewMode, setViewMode] = useState("table");
+  const [selectedApps, setSelectedApps] = useState([]);
+  const [showBulkConfirm, setShowBulkConfirm] = useState(false);
+  const [bulkAction, setBulkAction] = useState(null);
+  const [showCompareModal, setShowCompareModal] = useState(false);
+  const [compareCandidates, setCompareCandidates] = useState([]);
+  const [pagination, setPagination] = useState({
+    page: 1,
+    limit: PAGE_SIZE,
+    total: 0,
+    total_pages: 1,
+  });
+  const [shortlistedIds, setShortlistedIds] = useState(new Set());
+
+  // Socket connection for real-time updates
+  const { isConnected, onNotification } = useSocket();
 
   const fetchJob = useCallback(async () => {
-    if (!jobId) return
+    if (!jobId) return;
     try {
-      const response = await JobService.getManage(jobId)
-      const data = response?.data || response
-      setJob(data)
-      setHasAccess(true)
+      const response = await JobService.getManage(jobId);
+      const data = response?.data || response;
+      setJob(data);
+      setHasAccess(true);
     } catch (err) {
-      console.error('Failed to fetch job:', err)
+      console.error("Failed to fetch job:", err);
       if (err?.status === 403) {
-        setHasAccess(false)
-        setError(err?.data?.message || err?.message || 'Bạn không có quyền truy cập tài nguyên này')
+        setHasAccess(false);
+        setError(
+          err?.data?.message ||
+            err?.message ||
+            "Bạn không có quyền truy cập tài nguyên này"
+        );
       }
     }
-  }, [jobId])
+  }, [jobId]);
 
   const fetchStats = useCallback(async () => {
-    if (!jobId) return
+    if (!jobId) return;
     try {
-      const response = await ApplicationService.getStats(jobId)
-      const data = response?.data || response
-      setStats(data)
+      const response = await ApplicationService.getStats(jobId);
+      const data = response?.data || response;
+      setStats(data);
     } catch (err) {
-      console.error('Failed to fetch stats:', err)
+      console.error("Failed to fetch stats:", err);
     }
-  }, [jobId])
+  }, [jobId]);
 
   const fetchApplications = useCallback(async () => {
-    if (!jobId) return
-    if (!hasAccess) return
-    setLoading(true)
-    setError(null)
+    if (!jobId) return;
+    if (!hasAccess) return;
+    setLoading(true);
+    setError(null);
     try {
       const filters = {
         page: currentPage,
         limit: PAGE_SIZE,
-        status: (statusFilter && statusFilter.trim() !== '') ? statusFilter : undefined,
-        stage: (stageFilter && stageFilter.trim() !== '') ? stageFilter : undefined,
+        status:
+          statusFilter && statusFilter.trim() !== "" ? statusFilter : undefined,
+        stage:
+          stageFilter && stageFilter.trim() !== "" ? stageFilter : undefined,
         // search: searchQuery || undefined, // Not supported by backend yet
         sort_by: sortBy,
-        order: order
-      }
-      const response = await ApplicationService.listByJob(jobId, filters)
-      const data = response?.data || response || []
-      const pag = response?.pagination || { page: currentPage, limit: PAGE_SIZE, total: data.length, total_pages: 1 }
-      
-      setApplications(data)
-      setPagination(pag)
+        order: order,
+      };
+      const response = await ApplicationService.listByJob(jobId, filters);
+      const data = response?.data || response || [];
+      const pag = response?.pagination || {
+        page: currentPage,
+        limit: PAGE_SIZE,
+        total: data.length,
+        total_pages: 1,
+      };
+
+      setApplications(data);
+      setPagination(pag);
     } catch (err) {
-      console.error('Failed to fetch applications:', err)
-      console.error('Error details:', err?.data || err?.response || err)
-      const errorMessage = err?.data?.message || err?.message || 'Không thể tải danh sách ứng viên. Vui lòng thử lại.'
-      setError(errorMessage)
+      console.error("Failed to fetch applications:", err);
+      console.error("Error details:", err?.data || err?.response || err);
+      const errorMessage =
+        err?.data?.message ||
+        err?.message ||
+        "Không thể tải danh sách ứng viên. Vui lòng thử lại.";
+      setError(errorMessage);
       if (err?.status === 401) {
-        navigate('/login?role=recruiter&redirect=' + encodeURIComponent(window.location.pathname))
+        navigate(
+          "/login?role=recruiter&redirect=" +
+            encodeURIComponent(window.location.pathname)
+        );
       }
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }, [jobId, currentPage, statusFilter, stageFilter, searchQuery, sortBy, order, navigate])
+  }, [
+    jobId,
+    currentPage,
+    statusFilter,
+    stageFilter,
+    searchQuery,
+    sortBy,
+    order,
+    navigate,
+  ]);
 
   useEffect(() => {
-    fetchJob()
-    fetchStats()
-  }, [fetchJob, fetchStats])
+    fetchJob();
+    fetchStats();
+  }, [fetchJob, fetchStats]);
 
   useEffect(() => {
     if (hasAccess) {
-      fetchApplications()
+      fetchApplications();
     }
-  }, [fetchApplications, hasAccess])
+  }, [fetchApplications, hasAccess]);
+
+  // Listen for real-time updates via Socket.IO
+  useEffect(() => {
+    if (!isConnected || !jobId) return;
+
+    onNotification((notification) => {
+      // Check if notification is related to current job
+      const notificationJobId = notification.metadata?.job_id;
+
+      if (
+        notification.type === "application_received" &&
+        notificationJobId === jobId
+      ) {
+        console.log("🔔 Ứng viên mới:", notification.content);
+        fetchApplications();
+        fetchStats();
+      }
+
+      if (
+        (notification.type === "application_status_changed" ||
+          notification.type === "application_stage_updated") &&
+        notificationJobId === jobId
+      ) {
+        console.log("🔔 Trạng thái ứng viên thay đổi:", notification.content);
+        fetchApplications();
+        fetchStats();
+      }
+    });
+  }, [isConnected, jobId, onNotification, fetchApplications, fetchStats]);
 
   const handleStatusFilter = (value) => {
-    setStatusFilter(value)
-    setCurrentPage(1)
-  }
+    setStatusFilter(value);
+    setCurrentPage(1);
+  };
 
   const handleSelectApp = (appId) => {
-    setSelectedApps(prev => 
-      prev.includes(appId) 
-        ? prev.filter(id => id !== appId)
+    setSelectedApps((prev) =>
+      prev.includes(appId)
+        ? prev.filter((id) => id !== appId)
         : [...prev, appId]
-    )
-  }
+    );
+  };
 
   const handleSelectAll = () => {
     if (selectedApps.length === applications.length) {
-      setSelectedApps([])
+      setSelectedApps([]);
     } else {
-      setSelectedApps(applications.map(app => app.id))
+      setSelectedApps(applications.map((app) => app.id));
     }
-  }
+  };
 
   const handleBulkAction = (action) => {
-    setBulkAction(action)
-    setShowBulkConfirm(true)
-  }
+    setBulkAction(action);
+    setShowBulkConfirm(true);
+  };
 
   const confirmBulkAction = async () => {
-    if (!bulkAction || selectedApps.length === 0) return
-    
+    if (!bulkAction || selectedApps.length === 0) return;
+
     try {
+      // Note: Backend bulk update still uses legacy action values
+      // TODO: Update backend to use new workflow status values
       const actionMap = {
-        accept: 'accept',
-        reject: 'reject',
-        review: 'review'
-      }
-      
+        accept: "accept", // Maps to application_status.accepted
+        reject: "reject", // Maps to application_status.rejected
+        review: "review", // Maps to application_status.reviewed
+      };
+
       await ApplicationService.bulkUpdate({
         application_ids: selectedApps,
-        action: actionMap[bulkAction]
-      })
+        action: actionMap[bulkAction],
+      });
 
       // Show success message (could be replaced with toast notification)
-      const successMessage = `Đã ${bulkAction === 'accept' ? 'chấp nhận' : bulkAction === 'reject' ? 'từ chối' : 'đánh dấu đã xem'} ${selectedApps.length} ứng viên thành công.`
-      console.log('Success:', successMessage) // Replace with toast notification
+      const successMessage = `Đã ${
+        bulkAction === "accept"
+          ? "chấp nhận"
+          : bulkAction === "reject"
+          ? "từ chối"
+          : "đánh dấu đã xem"
+      } ${selectedApps.length} ứng viên thành công.`;
+      console.log("Success:", successMessage); // Replace with toast notification
 
-      fetchApplications()
-      fetchStats()
-      setSelectedApps([])
-      setShowBulkConfirm(false)
-      setBulkAction(null)
+      fetchApplications();
+      fetchStats();
+      setSelectedApps([]);
+      setShowBulkConfirm(false);
+      setBulkAction(null);
     } catch (err) {
-      const errorMessage = err?.data?.message || err?.message || 'Không thể thực hiện thao tác. Vui lòng thử lại.'
-      console.error('Bulk action error:', errorMessage) // Replace with error toast
+      const errorMessage =
+        err?.data?.message ||
+        err?.message ||
+        "Không thể thực hiện thao tác. Vui lòng thử lại.";
+      console.error("Bulk action error:", errorMessage); // Replace with error toast
     }
-  }
+  };
 
   const handleShortlistToggle = async (appId) => {
-    const isShortlisted = shortlistedIds.has(appId)
-    const action = isShortlisted ? 'remove' : 'add'
+    const isShortlisted = shortlistedIds.has(appId);
+    const action = isShortlisted ? "remove" : "add";
 
     try {
       await ApplicationService.shortlistCandidate({
         application_id: appId,
-        action: action
-      })
+        action: action,
+      });
 
-      setShortlistedIds(prev => {
-        const newSet = new Set(prev)
-        if (action === 'add') {
-          newSet.add(appId)
+      setShortlistedIds((prev) => {
+        const newSet = new Set(prev);
+        if (action === "add") {
+          newSet.add(appId);
         } else {
-          newSet.delete(appId)
+          newSet.delete(appId);
         }
-        return newSet
-      })
+        return newSet;
+      });
 
       // Show success message
-      const message = action === 'add' ? 'Đã thêm vào shortlist' : 'Đã bỏ khỏi shortlist'
+      const message =
+        action === "add" ? "Đã thêm vào shortlist" : "Đã bỏ khỏi shortlist";
       // You might want to use a toast notification here instead of alert
-      console.log(message)
+      console.log(message);
     } catch (err) {
-      alert(err?.message || 'Không thể cập nhật shortlist. Vui lòng thử lại.')
+      alert(err?.message || "Không thể cập nhật shortlist. Vui lòng thử lại.");
     }
-  }
+  };
 
   const handleBulkShortlist = async (action) => {
-    if (selectedApps.length === 0) return
+    if (selectedApps.length === 0) return;
 
     try {
       // Process all selected applications
-      const promises = selectedApps.map(appId =>
+      const promises = selectedApps.map((appId) =>
         ApplicationService.shortlistCandidate({
           application_id: appId,
-          action: action
+          action: action,
         })
-      )
+      );
 
-      await Promise.all(promises)
+      await Promise.all(promises);
 
       // Update local state
-      setShortlistedIds(prev => {
-        const newSet = new Set(prev)
-        selectedApps.forEach(appId => {
-          if (action === 'add') {
-            newSet.add(appId)
+      setShortlistedIds((prev) => {
+        const newSet = new Set(prev);
+        selectedApps.forEach((appId) => {
+          if (action === "add") {
+            newSet.add(appId);
           } else {
-            newSet.delete(appId)
+            newSet.delete(appId);
           }
-        })
-        return newSet
-      })
+        });
+        return newSet;
+      });
 
-      alert(`Đã ${action === 'add' ? 'thêm' : 'bỏ'} ${selectedApps.length} ứng viên ${action === 'add' ? 'vào' : 'khỏi'} shortlist thành công.`)
-      setSelectedApps([])
+      alert(
+        `Đã ${action === "add" ? "thêm" : "bỏ"} ${
+          selectedApps.length
+        } ứng viên ${action === "add" ? "vào" : "khỏi"} shortlist thành công.`
+      );
+      setSelectedApps([]);
     } catch (err) {
-      alert(err?.message || 'Không thể thực hiện thao tác. Vui lòng thử lại.')
+      alert(err?.message || "Không thể thực hiện thao tác. Vui lòng thử lại.");
     }
-  }
+  };
 
   const handleCompare = () => {
     if (selectedApps.length >= 2 && selectedApps.length <= 4) {
-      setCompareCandidates(selectedApps)
-      setShowCompareModal(true)
+      setCompareCandidates(selectedApps);
+      setShowCompareModal(true);
     }
-  }
+  };
 
   const handleViewDetail = (appId) => {
-    navigate(`/recruiter/applications/${appId}`)
-  }
+    navigate(`/recruiter/applications/${appId}`);
+  };
 
   const statsData = stats || {
     total: 0,
-    by_status: { pending: 0, reviewed: 0, accepted: 0, rejected: 0, withdrawn: 0 }
-  }
+    by_status: {
+      [APPLICATION_STATUSES.APPLIED]: 0,
+      [APPLICATION_STATUSES.REVIEWED]: 0,
+      [APPLICATION_STATUSES.INTERVIEWING]: 0,
+      [APPLICATION_STATUSES.ACCEPTED]: 0,
+      [APPLICATION_STATUSES.REJECTED]: 0,
+      [APPLICATION_STATUSES.WITHDRAWN]: 0,
+    },
+  };
 
   return (
     <div className="section applications-list-page">
@@ -305,14 +404,20 @@ export default function ApplicationsList() {
           <div className="breadcrumb">
             <Link to="/recruiter/jobs">Tin tuyển dụng</Link>
             <span> / </span>
-            {job && <Link to={`/recruiter/jobs/${jobId}/manage`}>{job.title || 'Job'}</Link>}
+            {job && (
+              <Link to={`/recruiter/jobs/${jobId}/manage`}>
+                {job.title || "Job"}
+              </Link>
+            )}
             <span> / </span>
             <span>Ứng viên</span>
           </div>
           <h1 className="applications-title">Quản lý ứng viên</h1>
-          {job && <p className="applications-subtitle">Tin tuyển dụng: {job.title}</p>}
+          {job && (
+            <p className="applications-subtitle">Tin tuyển dụng: {job.title}</p>
+          )}
         </div>
-        <Button 
+        <Button
           variant="outline"
           onClick={() => navigate(`/recruiter/jobs/${jobId}/manage`)}
         >
@@ -328,25 +433,54 @@ export default function ApplicationsList() {
               <div className="stat-value">{statsData.total || 0}</div>
               <div className="stat-label">Tổng số</div>
             </div>
-            <div className="stat-item stat-pending">
-              <div className="stat-value">{statsData.by_status?.pending || 0}</div>
-              <div className="stat-label">Đang chờ</div>
+            <div className="stat-item stat-applied">
+              <div className="stat-value">
+                {statsData.by_status?.[APPLICATION_STATUSES.APPLIED] || 0}
+              </div>
+              <div className="stat-label">
+                {STATUS_LABELS[APPLICATION_STATUSES.APPLIED]}
+              </div>
             </div>
-            <div className="stat-item stat-reviewed">
-              <div className="stat-value">{statsData.by_status?.reviewed || 0}</div>
-              <div className="stat-label">Đã xem</div>
+            <div className="stat-item stat-under-review">
+              <div className="stat-value">
+                {statsData.by_status?.[APPLICATION_STATUSES.REVIEWED] || 0}
+              </div>
+              <div className="stat-label">
+                {STATUS_LABELS[APPLICATION_STATUSES.REVIEWED]}
+              </div>
             </div>
+            <div className="stat-item stat-interviewing">
+              <div className="stat-value">
+                {statsData.by_status?.[APPLICATION_STATUSES.INTERVIEWING] || 0}
+              </div>
+              <div className="stat-label">
+                {STATUS_LABELS[APPLICATION_STATUSES.INTERVIEWING]}
+              </div>
+            </div>
+            <div className="stat-item stat-final-decision"></div>
             <div className="stat-item stat-accepted">
-              <div className="stat-value">{statsData.by_status?.accepted || 0}</div>
-              <div className="stat-label">Chấp nhận</div>
+              <div className="stat-value">
+                {statsData.by_status?.[APPLICATION_STATUSES.ACCEPTED] || 0}
+              </div>
+              <div className="stat-label">
+                {STATUS_LABELS[APPLICATION_STATUSES.ACCEPTED]}
+              </div>
             </div>
             <div className="stat-item stat-rejected">
-              <div className="stat-value">{statsData.by_status?.rejected || 0}</div>
-              <div className="stat-label">Từ chối</div>
+              <div className="stat-value">
+                {statsData.by_status?.[APPLICATION_STATUSES.REJECTED] || 0}
+              </div>
+              <div className="stat-label">
+                {STATUS_LABELS[APPLICATION_STATUSES.REJECTED]}
+              </div>
             </div>
             <div className="stat-item stat-withdrawn">
-              <div className="stat-value">{statsData.by_status?.withdrawn || 0}</div>
-              <div className="stat-label">Đã rút</div>
+              <div className="stat-value">
+                {statsData.by_status?.[APPLICATION_STATUSES.WITHDRAWN] || 0}
+              </div>
+              <div className="stat-label">
+                {STATUS_LABELS[APPLICATION_STATUSES.WITHDRAWN]}
+              </div>
             </div>
           </div>
         </Card>
@@ -360,16 +494,18 @@ export default function ApplicationsList() {
               placeholder="Tìm kiếm theo tên ứng viên..."
               value={searchQuery}
               onChange={(e) => {
-                setSearchQuery(e.target.value)
-                setCurrentPage(1)
+                setSearchQuery(e.target.value);
+                setCurrentPage(1);
               }}
             />
           </div>
           <div className="filter-chips">
-            {STATUS_OPTIONS.map(status => (
+            {STATUS_OPTIONS.map((status) => (
               <button
                 key={status.value}
-                className={`filter-chip ${statusFilter === status.value ? 'active' : ''}`}
+                className={`filter-chip ${
+                  statusFilter === status.value ? "active" : ""
+                }`}
                 onClick={() => handleStatusFilter(status.value)}
               >
                 {status.label}
@@ -380,34 +516,40 @@ export default function ApplicationsList() {
             <Select
               value={sortBy}
               onChange={(e) => {
-                setSortBy(e.target.value)
-                setCurrentPage(1)
+                setSortBy(e.target.value);
+                setCurrentPage(1);
               }}
-              style={{ minWidth: '150px' }}
+              style={{ minWidth: "150px" }}
             >
-              {SORT_OPTIONS.map(opt => (
-                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              {SORT_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
               ))}
             </Select>
             <button
-              className={`sort-order-btn ${order === 'desc' ? 'desc' : 'asc'}`}
-              onClick={() => setOrder(order === 'desc' ? 'asc' : 'desc')}
-              title={order === 'desc' ? 'Giảm dần' : 'Tăng dần'}
+              className={`sort-order-btn ${order === "desc" ? "desc" : "asc"}`}
+              onClick={() => setOrder(order === "desc" ? "asc" : "desc")}
+              title={order === "desc" ? "Giảm dần" : "Tăng dần"}
             >
-              {order === 'desc' ? '↓' : '↑'}
+              {order === "desc" ? "↓" : "↑"}
             </button>
           </div>
           <div className="view-toggle">
             <button
-              className={`view-toggle-btn ${viewMode === 'table' ? 'active' : ''}`}
-              onClick={() => setViewMode('table')}
+              className={`view-toggle-btn ${
+                viewMode === "table" ? "active" : ""
+              }`}
+              onClick={() => setViewMode("table")}
               title="Xem dạng bảng"
             >
               Bảng
             </button>
             <button
-              className={`view-toggle-btn ${viewMode === 'card' ? 'active' : ''}`}
-              onClick={() => setViewMode('card')}
+              className={`view-toggle-btn ${
+                viewMode === "card" ? "active" : ""
+              }`}
+              onClick={() => setViewMode("card")}
               title="Xem dạng thẻ"
             >
               Thẻ
@@ -425,35 +567,35 @@ export default function ApplicationsList() {
               <Button
                 variant="outline"
                 size="small"
-                onClick={() => handleBulkShortlist('add')}
+                onClick={() => handleBulkShortlist("add")}
               >
                 Thêm vào shortlist
               </Button>
               <Button
                 variant="outline"
                 size="small"
-                onClick={() => handleBulkShortlist('remove')}
+                onClick={() => handleBulkShortlist("remove")}
               >
                 Bỏ khỏi shortlist
               </Button>
               <Button
                 variant="outline"
                 size="small"
-                onClick={() => handleBulkAction('review')}
+                onClick={() => handleBulkAction("review")}
               >
                 Đánh dấu đã xem
               </Button>
               <Button
                 variant="outline"
                 size="small"
-                onClick={() => handleBulkAction('accept')}
+                onClick={() => handleBulkAction("accept")}
               >
                 Chấp nhận
               </Button>
               <Button
                 variant="outline"
                 size="small"
-                onClick={() => handleBulkAction('reject')}
+                onClick={() => handleBulkAction("reject")}
               >
                 Từ chối
               </Button>
@@ -479,8 +621,12 @@ export default function ApplicationsList() {
       </Card>
 
       {loading && (
-        <Card padding="large" role="status" aria-label="Đang tải danh sách ứng viên">
-          <div style={{ textAlign: 'center', padding: '40px' }}>
+        <Card
+          padding="large"
+          role="status"
+          aria-label="Đang tải danh sách ứng viên"
+        >
+          <div style={{ textAlign: "center", padding: "40px" }}>
             <div aria-hidden="true">Đang tải...</div>
             <div className="loading-spinner" aria-hidden="true"></div>
           </div>
@@ -488,9 +634,16 @@ export default function ApplicationsList() {
       )}
 
       {error && (
-        <Card padding="medium" style={{ background: '#fee', border: '1px solid #fcc' }}>
-          <p style={{ color: '#c00', margin: 0 }}>{error}</p>
-          <Button variant="outline" onClick={fetchApplications} style={{ marginTop: '12px' }}>
+        <Card
+          padding="medium"
+          style={{ background: "#fee", border: "1px solid #fcc" }}
+        >
+          <p style={{ color: "#c00", margin: 0 }}>{error}</p>
+          <Button
+            variant="outline"
+            onClick={fetchApplications}
+            style={{ marginTop: "12px" }}
+          >
             Thử lại
           </Button>
         </Card>
@@ -509,15 +662,26 @@ export default function ApplicationsList() {
 
       {!loading && !error && applications.length > 0 && (
         <>
-          {viewMode === 'table' ? (
+          {viewMode === "table" ? (
             <div className="applications-table-wrapper">
-              <table className="applications-table" role="table" aria-label="Danh sách ứng viên">
+              <table
+                className="applications-table"
+                role="table"
+                aria-label="Danh sách ứng viên"
+              >
                 <thead>
                   <tr role="row">
-                    <th style={{ width: '40px' }} role="columnheader" aria-label="Chọn tất cả">
+                    <th
+                      style={{ width: "40px" }}
+                      role="columnheader"
+                      aria-label="Chọn tất cả"
+                    >
                       <input
                         type="checkbox"
-                        checked={selectedApps.length === applications.length && applications.length > 0}
+                        checked={
+                          selectedApps.length === applications.length &&
+                          applications.length > 0
+                        }
                         onChange={handleSelectAll}
                         aria-label="Chọn tất cả ứng viên"
                       />
@@ -525,21 +689,34 @@ export default function ApplicationsList() {
                     <th role="columnheader">Ứng viên</th>
                     <th role="columnheader">Trạng thái</th>
                     <th role="columnheader">Stage</th>
-                    <th role="columnheader">Rating</th>
                     <th role="columnheader">Ngày ứng tuyển</th>
-                    <th role="columnheader" style={{ textAlign: 'center' }}>Thao tác</th>
+                    <th role="columnheader" style={{ textAlign: "center" }}>
+                      Thao tác
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
                   {applications.map((app) => {
                     // API trả về app.candidate (backend format) hoặc app.profiles (legacy)
-                    const profile = app.profiles || app.candidate || app.candidate?.profile || {}
-                    const name = profile.full_name || profile.display_name || profile.name || 'Chưa có tên'
-                    const status = app.status || 'pending'
-                    const isSelected = selectedApps.includes(app.id)
-                    
+                    const profile =
+                      app.profiles ||
+                      app.candidate ||
+                      app.candidate?.profile ||
+                      {};
+                    const name =
+                      profile.full_name ||
+                      profile.display_name ||
+                      profile.name ||
+                      "Chưa có tên";
+                    const status = normalizeStatus(app.status);
+                    const isSelected = selectedApps.includes(app.id);
+
                     return (
-                      <tr key={app.id} className={isSelected ? 'selected' : ''} role="row">
+                      <tr
+                        key={app.id}
+                        className={isSelected ? "selected" : ""}
+                        role="row"
+                      >
                         <td role="cell">
                           <input
                             type="checkbox"
@@ -560,39 +737,40 @@ export default function ApplicationsList() {
                             <div>
                               <strong>{name}</strong>
                               {profile.headline && (
-                                <div className="candidate-headline">{profile.headline}</div>
+                                <div className="candidate-headline">
+                                  {profile.headline}
+                                </div>
                               )}
                             </div>
                           </div>
                         </td>
                         <td>
-                          <Badge 
-                            variant={STATUS_COLORS[status] || 'default'}
+                          <Badge
+                            variant={STATUS_COLORS[status] || "default"}
                             size="small"
                           >
                             {STATUS_LABELS[status] || status}
                           </Badge>
                         </td>
-                        <td>
-                          {app.current_stage?.stage_name || '--'}
-                        </td>
-                        <td>
-                          {app.current_stage?.rating ? (
-                            <span className="rating-display">
-                              {renderRating(app.current_stage.rating)}
-                            </span>
-                          ) : '--'}
-                        </td>
+                        <td>{app.current_stage?.stage_name || "--"}</td>
                         <td>{formatDate(app.applied_at)}</td>
                         <td>
                           <div className="application-actions">
                             <Button
-                              variant={shortlistedIds.has(app.id) ? "primary" : "outline"}
+                              variant={
+                                shortlistedIds.has(app.id)
+                                  ? "primary"
+                                  : "outline"
+                              }
                               size="small"
                               onClick={() => handleShortlistToggle(app.id)}
-                              title={shortlistedIds.has(app.id) ? "Bỏ khỏi shortlist" : "Thêm vào shortlist"}
+                              title={
+                                shortlistedIds.has(app.id)
+                                  ? "Bỏ khỏi shortlist"
+                                  : "Thêm vào shortlist"
+                              }
                             >
-                              {shortlistedIds.has(app.id) ? '★' : '☆'}
+                              {shortlistedIds.has(app.id) ? "★" : "☆"}
                             </Button>
                             <Button
                               variant="ghost"
@@ -604,7 +782,7 @@ export default function ApplicationsList() {
                           </div>
                         </td>
                       </tr>
-                    )
+                    );
                   })}
                 </tbody>
               </table>
@@ -612,17 +790,24 @@ export default function ApplicationsList() {
           ) : (
             <div className="applications-card-grid">
               {applications.map((app) => {
-                const profile = app.profiles || app.candidate || app.candidate?.profile || {}
-                const name = profile.full_name || profile.display_name || profile.name || 'Chưa có tên'
-                const status = app.status || 'pending'
-                const isSelected = selectedApps.includes(app.id)
-                
+                const profile =
+                  app.profiles || app.candidate || app.candidate?.profile || {};
+                const name =
+                  profile.full_name ||
+                  profile.display_name ||
+                  profile.name ||
+                  "Chưa có tên";
+                const status = app.status || "pending";
+                const isSelected = selectedApps.includes(app.id);
+
                 return (
-                  <Card 
-                    key={app.id} 
-                    variant="elevated" 
+                  <Card
+                    key={app.id}
+                    variant="elevated"
                     padding="medium"
-                    className={`application-card ${isSelected ? 'selected' : ''}`}
+                    className={`application-card ${
+                      isSelected ? "selected" : ""
+                    }`}
                     hover
                   >
                     <div className="application-card-header">
@@ -632,8 +817,8 @@ export default function ApplicationsList() {
                         onChange={() => handleSelectApp(app.id)}
                         onClick={(e) => e.stopPropagation()}
                       />
-                      <Badge 
-                        variant={STATUS_COLORS[status] || 'default'}
+                      <Badge
+                        variant={STATUS_COLORS[status] || "default"}
                         size="small"
                       >
                         {STATUS_LABELS[status] || status}
@@ -651,23 +836,17 @@ export default function ApplicationsList() {
                         <div>
                           <h3 className="candidate-name">{name}</h3>
                           {profile.headline && (
-                            <p className="candidate-headline">{profile.headline}</p>
+                            <p className="candidate-headline">
+                              {profile.headline}
+                            </p>
                           )}
                         </div>
                       </div>
                       <div className="application-card-meta">
                         <div className="meta-item">
                           <span className="meta-label">Stage:</span>
-                          <span>{app.current_stage?.stage_name || '--'}</span>
+                          <span>{app.current_stage?.stage_name || "--"}</span>
                         </div>
-                        {app.current_stage?.rating && (
-                          <div className="meta-item">
-                            <span className="meta-label">Rating:</span>
-                            <span className="rating-display">
-                              {renderRating(app.current_stage.rating)}
-                            </span>
-                          </div>
-                        )}
                         <div className="meta-item">
                           <span className="meta-label">Ngày ứng tuyển:</span>
                           <span>{formatDate(app.applied_at)}</span>
@@ -676,12 +855,20 @@ export default function ApplicationsList() {
                     </div>
                     <div className="application-card-actions">
                       <Button
-                        variant={shortlistedIds.has(app.id) ? "primary" : "outline"}
+                        variant={
+                          shortlistedIds.has(app.id) ? "primary" : "outline"
+                        }
                         size="small"
                         onClick={() => handleShortlistToggle(app.id)}
-                        title={shortlistedIds.has(app.id) ? "Bỏ khỏi shortlist" : "Thêm vào shortlist"}
+                        title={
+                          shortlistedIds.has(app.id)
+                            ? "Bỏ khỏi shortlist"
+                            : "Thêm vào shortlist"
+                        }
                       >
-                        {shortlistedIds.has(app.id) ? '★ Shortlisted' : '☆ Shortlist'}
+                        {shortlistedIds.has(app.id)
+                          ? "★ Shortlisted"
+                          : "☆ Shortlist"}
                       </Button>
                       <Button
                         variant="default"
@@ -692,27 +879,29 @@ export default function ApplicationsList() {
                       </Button>
                     </div>
                   </Card>
-                )
+                );
               })}
             </div>
           )}
 
           {pagination.total_pages > 1 && (
             <div className="pagination">
-              <Button 
+              <Button
                 variant="outline"
                 disabled={currentPage === 1}
-                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
               >
                 Trước
               </Button>
               <div className="pagination-info">
                 Trang {currentPage} / {pagination.total_pages}
               </div>
-              <Button 
+              <Button
                 variant="outline"
                 disabled={currentPage >= pagination.total_pages}
-                onClick={() => setCurrentPage(p => Math.min(pagination.total_pages, p + 1))}
+                onClick={() =>
+                  setCurrentPage((p) => Math.min(pagination.total_pages, p + 1))
+                }
               >
                 Sau
               </Button>
@@ -725,15 +914,21 @@ export default function ApplicationsList() {
       <ConfirmModal
         isOpen={showBulkConfirm}
         onClose={() => {
-          setShowBulkConfirm(false)
-          setBulkAction(null)
+          setShowBulkConfirm(false);
+          setBulkAction(null);
         }}
         onConfirm={confirmBulkAction}
         title="Xác nhận thao tác"
-        message={`Bạn có chắc chắn muốn ${bulkAction === 'accept' ? 'chấp nhận' : bulkAction === 'reject' ? 'từ chối' : 'đánh dấu đã xem'} ${selectedApps.length} ứng viên đã chọn?`}
+        message={`Bạn có chắc chắn muốn ${
+          bulkAction === "accept"
+            ? "chấp nhận"
+            : bulkAction === "reject"
+            ? "từ chối"
+            : "đánh dấu đã xem"
+        } ${selectedApps.length} ứng viên đã chọn?`}
         confirmText="Xác nhận"
         cancelText="Hủy"
-        variant={bulkAction === 'reject' ? 'danger' : 'default'}
+        variant={bulkAction === "reject" ? "danger" : "default"}
         ariaLabel="Xác nhận thao tác hàng loạt trên ứng viên"
       />
 
@@ -741,17 +936,11 @@ export default function ApplicationsList() {
       <CompareModal
         isOpen={showCompareModal}
         onClose={() => {
-          setShowCompareModal(false)
-          setCompareCandidates([])
+          setShowCompareModal(false);
+          setCompareCandidates([]);
         }}
         candidateIds={compareCandidates}
       />
     </div>
-  )
+  );
 }
-
-
-
-
-
-

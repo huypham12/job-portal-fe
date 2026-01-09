@@ -2,6 +2,47 @@
 
 Giao diện trang chủ website tuyển dụng, kèm router và trang mẫu với tính năng tìm kiếm nâng cao.
 
+## 🚀 Recent Updates - Application Workflow & Notifications
+
+### Application Status Workflow
+
+The frontend uses the streamlined workflow with the following statuses:
+
+- `applied` - Đơn mới nộp (pending)
+- `reviewed` - Đã xem hồ sơ
+- `interviewing` - Đang phỏng vấn (có thể tạo nhiều stages)
+- `accepted` - Được chấp nhận
+- `rejected` - Bị từ chối
+- `withdrawn` - Đã rút đơn
+
+### Interview Pipeline
+
+- Recruiter creates interview stages after moving to "interviewing" status
+- Candidates can accept/decline scheduled interviews
+- After each stage completion, recruiter decides: create next stage OR accept application
+- No more "offer" phase - direct acceptance after successful interviews
+
+### Notification System
+
+- Real-time notification polling (30s intervals)
+- Badge showing unread count
+- Dropdown with notification list
+- Mark as read / delete functionality
+- Navigation to relevant application pages
+
+### Key Components
+
+- `applicationStatuses.js` - Status constants and validation
+- `NotificationService` - API wrapper for notifications
+- `NotificationDropdown` - UI component for notifications
+- `NotificationBadge` - Unread count indicator
+
+### API Compatibility
+
+- Backward compatibility with legacy status values
+- Automatic status normalization
+- Bulk actions use backend-expected values (temporary compatibility layer)
+
 ## Chạy dự án
 
 1. Mở Terminal tại thư mục `jobfinder/`.
@@ -16,12 +57,14 @@ Giao diện trang chủ website tuyển dụng, kèm router và trang mẫu vớ
 JobFinder hỗ trợ đầy đủ các tính năng tìm kiếm từ backend, bao gồm:
 
 ### Bộ lọc cơ bản
+
 - **Từ khóa**: Tìm kiếm tự do trong tiêu đề, mô tả, công ty
 - **Địa điểm**: Tìm theo tỉnh/thành phố, quận/huyện
 - **Loại công việc**: Toàn thời gian, Bán thời gian, Hợp đồng
 - **Kinh nghiệm**: Từ 0-5+ năm
 
 ### Bộ lọc nâng cao
+
 - **Kỹ năng**: Chọn nhiều kỹ năng với autocomplete từ API
 - **Mức lương**: Khoảng lương tối thiểu/tối đa (VND/tháng)
 - **Lĩnh vực**: Công nghệ, Kinh doanh, Marketing, Thiết kế, v.v.
@@ -30,6 +73,7 @@ JobFinder hỗ trợ đầy đủ các tính năng tìm kiếm từ backend, bao
 - **Giờ làm linh hoạt**: Có/không
 
 ### Sắp xếp kết quả
+
 - **Liên quan nhất**: Sắp xếp theo độ phù hợp (mặc định)
 - **Mới nhất**: Theo ngày đăng
 - **Cũ nhất**: Theo ngày đăng (tăng dần)
@@ -39,6 +83,7 @@ JobFinder hỗ trợ đầy đủ các tính năng tìm kiếm từ backend, bao
 - **Kinh nghiệm ít nhất**: Theo cấp độ kinh nghiệm
 
 ### Giao diện người dùng
+
 - **SearchBar**: Ô tìm kiếm chính với gợi ý tự động
 - **LocationSelector**: Component 2 cấp chọn địa điểm
   - Dropdown chọn Tỉnh/Thành phố (load từ API)
@@ -52,9 +97,11 @@ JobFinder hỗ trợ đầy đủ các tính năng tìm kiếm từ backend, bao
 ## Cấu trúc code
 
 ### Hooks
+
 - `useJobsSearch()` — Hook chính quản lý state tìm kiếm và API calls
 
 ### Components
+
 - `SearchPage.jsx` — Trang tìm kiếm chính
 - `SearchBar.jsx` — Ô tìm kiếm với suggestions
 - `JobFiltersSidebar.jsx` — Sidebar bộ lọc nâng cao
@@ -64,19 +111,24 @@ JobFinder hỗ trợ đầy đủ các tính năng tìm kiếm từ backend, bao
 - `JobCard.jsx` — Card công việc với highlights và badges
 
 ### Services
+
 - `searchService.js` — API calls cho tìm kiếm, đã cập nhật serialize arrays thành repeated params
 - `apiClient.js` — HTTP client với debounce
 
 ## API Integration
 
 ### Query Parameters
+
 Frontend gửi query params theo format:
+
 ```
 GET /api/search/jobs?q=developer&location=hanoi&jobType=full_time&experienceLevel=2&skills=react&skills=typescript&salaryMin=1000000&salaryMax=3000000&jobCategories=technology&jobBenefits=remote_work&remotePercentageMin=50&flexibleHours=true&sort=salary_high&page=1&size=20
 ```
 
 ### Response Format
+
 Backend trả về:
+
 ```json
 {
   "total": 150,
@@ -107,6 +159,7 @@ Backend trả về:
 ```
 
 ## Cấu trúc thư mục
+
 - `src/pages/Home.jsx` — Trang chủ với hero, tìm kiếm, danh mục, việc nổi bật, đối tác.
 - `src/pages/SearchPage.jsx` — Trang tìm kiếm với filters và results.
 - `src/pages/Jobs.jsx` — Danh sách việc làm.
@@ -118,8 +171,8 @@ Backend trả về:
 - `src/data/mock.js` — Dữ liệu mẫu.
 
 ## Tùy chỉnh nhanh
+
 - Màu sắc/kiểu dáng: `src/index.css`
 - Dữ liệu: `src/data/mock.js`
 - Cấu hình tìm kiếm: `src/hooks/useJobs.js`
 - API endpoints: `src/services/searchService.js`
-

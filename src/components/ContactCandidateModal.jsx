@@ -29,18 +29,18 @@ Trân trọng,
 [Công ty]`
   },
   {
-    value: 'offer',
-    label: 'Gửi offer',
-    subject: 'Đề nghị làm việc cho vị trí [Vị trí] tại [Công ty]',
+    value: 'acceptance',
+    label: 'Thông báo chấp nhận',
+    subject: 'Thông báo kết quả ứng tuyển vị trí [Vị trí] tại [Công ty]',
     message: `Kính gửi [Tên ứng viên],
 
-Chúng tôi rất vui mừng được đề nghị bạn gia nhập đội ngũ của chúng tôi với vai trò [Vị trí] tại [Công ty].
+Chúng tôi rất vui mừng thông báo rằng bạn đã được chấp nhận cho vị trí [Vị trí] tại [Công ty].
 
 Mức lương: [Mức lương]
 Thời gian bắt đầu: [Thời gian bắt đầu]
 Các quyền lợi khác: [Quyền lợi]
 
-Vui lòng xem xét và phản hồi trong vòng [Thời hạn] ngày.
+Vui lòng liên hệ với chúng tôi để hoàn tất thủ tục và bắt đầu làm việc.
 
 Trân trọng,
 [Nhà tuyển dụng]

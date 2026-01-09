@@ -25,7 +25,7 @@ export default function ResumeDetail() {
 
   // Form state
   const [title, setTitle] = useState('')
-  const [selectedTheme, setSelectedTheme] = useState('modern')
+  const [selectedTheme, setSelectedTheme] = useState('modern') // Unified default theme
   const [sectionsOrder, setSectionsOrder] = useState([])
   const [projects, setProjects] = useState([])
   const [languages, setLanguages] = useState([])
@@ -88,11 +88,7 @@ export default function ResumeDetail() {
 
         await ResumeApi.updateResume(id, {
           title: title.trim(),
-          content: updatedContent,
-          layout_settings: {
-            theme: selectedTheme,
-            sections_order: sectionsOrder,
-          },
+          content: updatedContent, // layout_settings is now within content
           is_public: isPublic,
           status: status,
         })
@@ -136,74 +132,38 @@ export default function ResumeDetail() {
     setPreviewOpen(true)
   }
 
-  // Map resume content to CVPreview format
+  // Map resume content to CVPreview format (now unified flat structure)
   const getProfileDataForPreview = () => {
-    // Always return a valid object structure
-    const defaultData = {
-      sections: {
-        personal_info: { data: {} },
-        skills: { items: [] },
-        experiences: { items: [] },
-        educations: { items: [] },
-        certifications: { items: [] },
-        awards: { items: [] }
-      }
-    }
-    
     if (!resume || !resume.content) {
-      return defaultData
+      return null // Let CVPreview handle empty state
     }
-    
+
     const content = resume.content
-    
-    // Nếu content đã có structure sections (từ API getProfileData)
-    if (content && content.sections) {
-      return {
-        sections: {
-          personal_info: content.sections.personal_info || defaultData.sections.personal_info,
-          skills: content.sections.skills || defaultData.sections.skills,
-          experiences: content.sections.experiences || defaultData.sections.experiences,
-          educations: content.sections.educations || defaultData.sections.educations,
-          certifications: content.sections.certifications || defaultData.sections.certifications,
-          awards: content.sections.awards || defaultData.sections.awards
-        }
-      }
-    }
-    
-    // Nếu content là flat structure (từ createResume)
+
+    // Unified flat structure from backend
     return {
-      sections: {
-        personal_info: {
-          data: content.personal_info || {}
-        },
-        skills: {
-          items: Array.isArray(content.skills) ? content.skills : []
-        },
-        experiences: {
-          items: Array.isArray(content.experiences) ? content.experiences : []
-        },
-        educations: {
-          items: Array.isArray(content.educations) ? content.educations : []
-        },
-        certifications: {
-          items: Array.isArray(content.certifications) ? content.certifications : []
-        },
-        awards: {
-          items: Array.isArray(content.awards) ? content.awards : []
-        }
-      }
+      personal_info: content.personal_info || {},
+      skills: Array.isArray(content.skills) ? content.skills : [],
+      experiences: Array.isArray(content.experiences) ? content.experiences : [],
+      educations: Array.isArray(content.educations) ? content.educations : [],
+      certifications: Array.isArray(content.certifications) ? content.certifications : [],
+      awards: Array.isArray(content.awards) ? content.awards : [],
+      projects: Array.isArray(content.projects) ? content.projects : [],
+      languages: Array.isArray(content.languages) ? content.languages : [],
+      summary: content.summary || '',
+      references: Array.isArray(content.references) ? content.references : []
     }
   }
 
   const getAdditionalDataForPreview = () => {
     if (!resume) return {}
-    
+
     const content = resume.content || {}
     return {
-      projects: content.projects || [],
-      languages: content.languages || [],
+      projects: Array.isArray(content.projects) ? content.projects : [],
+      languages: Array.isArray(content.languages) ? content.languages : [],
       summary: content.summary || '',
-      references: content.references || []
+      references: Array.isArray(content.references) ? content.references : []
     }
   }
 
@@ -428,7 +388,6 @@ export default function ResumeDetail() {
       // Nếu không lấy được HTML, cảnh báo nhưng vẫn tiếp tục
       if (!htmlContent) {
         console.warn('⚠️ Không lấy được HTML từ preview, backend sẽ generate từ template')
-        alert('Không thể lấy HTML từ preview. PDF sẽ được tạo từ template backend.')
       }
       
       // Map theme từ frontend sang backend format (gửi trực tiếp tên template chuẩn)
@@ -452,10 +411,7 @@ export default function ResumeDetail() {
         format: format,
         viewportWidth: viewportWidth
       }
-      // Include frontend HTML when available so backend can inject preview content into server template
-      if (htmlContent) {
-        payload.html = htmlContent
-      }
+      // Do not include frontend HTML to ensure backend generates PDF from server template for consistency.
 
       console.log('📤 Export payload:', payload)
       const result = await ResumeApi.exportResume(id, payload)

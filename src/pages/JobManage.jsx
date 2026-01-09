@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { JobService } from "../lib/api.js";
 import { companyApi } from "../services/companyApi";
 import { useJobManage } from "../hooks/useJobs";
+import { useSocket } from "../hooks/useSocket";
 import {
   Button,
   Card,
@@ -83,6 +84,9 @@ export default function JobManage() {
   const [showStatusConfirm, setShowStatusConfirm] = useState(false);
   const [pendingStatus, setPendingStatus] = useState(null);
 
+  // Socket connection for real-time updates
+  const { isConnected, onNotification } = useSocket();
+
   const [form, setForm] = useState({
     title: "",
     description: "",
@@ -111,6 +115,33 @@ export default function JobManage() {
       fetchCompany();
     }
   }, [id]);
+
+  // Listen for real-time updates via Socket.IO
+  useEffect(() => {
+    if (!isConnected || !id) return;
+
+    onNotification((notification) => {
+      const notificationJobId = notification.metadata?.job_id;
+
+      // Reload job stats when someone applies to this job
+      if (
+        notification.type === "application_received" &&
+        notificationJobId === id
+      ) {
+        console.log("🔔 Ứng viên mới:", notification.content);
+        fetchJob();
+      }
+
+      // Reload when application status changes
+      if (
+        notification.type === "application_status_changed" &&
+        notificationJobId === id
+      ) {
+        console.log("🔔 Trạng thái ứng viên thay đổi:", notification.content);
+        fetchJob();
+      }
+    });
+  }, [isConnected, id, onNotification, fetchJob]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;

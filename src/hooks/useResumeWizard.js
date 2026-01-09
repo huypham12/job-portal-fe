@@ -5,8 +5,7 @@ const STEPS = {
   TITLE: 2,
   TEMPLATE: 3,
   ADDITIONAL_INFO: 4,
-  PREVIEW: 5,
-  SETTINGS: 6,
+  SETTINGS: 5,
 }
 
 const STEP_NAMES = {
@@ -14,7 +13,6 @@ const STEP_NAMES = {
   [STEPS.TITLE]: 'Đặt tên CV',
   [STEPS.TEMPLATE]: 'Chọn template',
   [STEPS.ADDITIONAL_INFO]: 'Thông tin bổ sung',
-  [STEPS.PREVIEW]: 'Xem trước',
   [STEPS.SETTINGS]: 'Cài đặt',
 }
 
@@ -109,8 +107,7 @@ export function useResumeWizard(initialStep = STEPS.METHOD) {
         return true
       case STEPS.TEMPLATE:
         return formData.theme !== ''
-      case STEPS.PREVIEW:
-        return true // Preview step không cần validation
+      // Preview step removed: no special validation required here
       case STEPS.ADDITIONAL_INFO:
         return true // Additional info step không cần validation (tùy chọn)
       case STEPS.SETTINGS:
@@ -163,8 +160,7 @@ export function useResumeWizard(initialStep = STEPS.METHOD) {
         return formData.title?.trim() && formData.title.trim().length >= 3
       case STEPS.TEMPLATE:
         return formData.theme !== ''
-      case STEPS.PREVIEW:
-        return true
+      // Preview step removed
       case STEPS.ADDITIONAL_INFO:
         return true
       case STEPS.SETTINGS:

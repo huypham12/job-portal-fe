@@ -10,6 +10,9 @@ import { getRole, getAuthUser, logout, getRefreshToken } from "./auth/auth.js";
 import { AuthClient } from "./services/authClient";
 import { ProfileClient } from "./services/profileClient";
 import SimpleModal from "./components/Modal.jsx";
+import NotificationDropdown from "./components/NotificationDropdown";
+import { notificationPoller } from "./services/notificationService";
+import { socketService } from "./services/socketService";
 
 export default function App() {
   const [role, setRole] = useState(getRole());
@@ -17,12 +20,15 @@ export default function App() {
   const [profileMeta, setProfileMeta] = useState(null);
   const [confirmLogout, setConfirmLogout] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [notificationOpen, setNotificationOpen] = useState(false);
   const menuRef = useRef(null);
   const navigate = useNavigate();
   const location = useLocation();
   const isProfileScreen = location.pathname.startsWith("/profile");
   const isRecruiterScreen = location.pathname.startsWith("/recruiter");
-  const isPostJobPage = location.pathname === "/post-job" || location.pathname.startsWith("/edit-job/");
+  const isPostJobPage =
+    location.pathname === "/post-job" ||
+    location.pathname.startsWith("/edit-job/");
   const isRecruiterPage = isRecruiterScreen || isPostJobPage;
 
   const fetchProfileMeta = async () => {
@@ -40,9 +46,22 @@ export default function App() {
 
   useEffect(() => {
     const update = async () => {
-      setRole(getRole());
-      setUser(getAuthUser());
+      const newRole = getRole();
+      const newUser = getAuthUser();
+      setRole(newRole);
+      setUser(newUser);
       await fetchProfileMeta();
+
+      // Start/stop notification polling and socket based on authentication
+      if (newRole) {
+        notificationPoller.startPolling();
+        // Connect to Socket.IO for real-time updates
+        socketService.connect();
+        socketService.subscribeToNotifications();
+      } else {
+        notificationPoller.stopPolling();
+        socketService.disconnect();
+      }
     };
     update();
     window.addEventListener("auth-changed", update);
@@ -50,6 +69,8 @@ export default function App() {
     return () => {
       window.removeEventListener("auth-changed", update);
       window.removeEventListener("storage", update);
+      notificationPoller.stopPolling();
+      socketService.disconnect();
     };
   }, []);
 
@@ -134,6 +155,10 @@ export default function App() {
           <div className="nav-actions">
             {role ? (
               <>
+                <NotificationDropdown
+                  isOpen={notificationOpen}
+                  onToggle={setNotificationOpen}
+                />
                 <div
                   className="user-menu"
                   ref={menuRef}

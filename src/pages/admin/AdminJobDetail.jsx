@@ -300,9 +300,6 @@ export default function AdminJobDetail() {
             <div className="admin-card admin-card-warning">
               <h2>Lý do từ chối</h2>
               <p>{job.metadata.rejection_reason}</p>
-              {job.metadata.rejected_at && (
-                <p className="admin-muted">Từ chối vào: {formatDate(job.metadata.rejected_at)}</p>
-              )}
             </div>
           )}
 

@@ -21,7 +21,7 @@ const employerHighlights = [
 const heroStats = [
   { value: '15.000+', label: 'Việc làm đang tuyển' },
   { value: '1.200+', label: 'Nhà tuyển dụng tin dùng' },
-  { value: '48h', label: 'Nhận offer trung bình' }
+  { value: '48h', label: 'Thời gian tuyển dụng trung bình' }
 ]
 
 const connectedRecruiters = [

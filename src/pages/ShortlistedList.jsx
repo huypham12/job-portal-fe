@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ApplicationService } from '../lib/api.js'
 import { Button, Card, Badge, Input, Select } from '../components/shared'
+import BulkActionsToolbar from '../components/common/BulkActionsToolbar'
 import '../styles/shared.css'
 import './ApplicationsList.css'
 
@@ -9,8 +10,7 @@ const PAGE_SIZE = 20
 
 const SORT_OPTIONS = [
   { value: 'applied_at', label: 'Mới nhất' },
-  { value: 'name', label: 'Theo tên' },
-  { value: 'rating', label: 'Theo rating' }
+  { value: 'name', label: 'Theo tên' }
 ]
 
 function formatDate(dateString) {
@@ -32,13 +32,6 @@ function getInitials(name) {
   return name[0].toUpperCase()
 }
 
-function renderRating(rating) {
-  if (!rating || rating <= 0) return '--'
-  const validRating = Math.min(5, Math.max(1, Math.floor(rating)))
-  const filled = '★'.repeat(validRating)
-  const empty = '☆'.repeat(5 - validRating)
-  return filled + empty
-}
 
 export default function ShortlistedList() {
   const navigate = useNavigate()
@@ -50,6 +43,10 @@ export default function ShortlistedList() {
   const [sortBy, setSortBy] = useState('applied_at')
   const [order, setOrder] = useState('desc')
   const [pagination, setPagination] = useState({ page: 1, limit: PAGE_SIZE, total: 0, total_pages: 1 })
+
+  // Bulk selection state
+  const [selectedIds, setSelectedIds] = useState([])
+  const [bulkLoading, setBulkLoading] = useState(false)
 
   const fetchShortlisted = useCallback(async () => {
     setLoading(true)
@@ -109,6 +106,97 @@ export default function ShortlistedList() {
     navigate(`/recruiter/applications/${appId}`)
   }
 
+  // Bulk selection handlers
+  const handleSelectAll = useCallback((checked) => {
+    if (checked) {
+      setSelectedIds(applications.map(app => app.id))
+    } else {
+      setSelectedIds([])
+    }
+  }, [applications])
+
+  const handleSelectItem = useCallback((appId, checked) => {
+    if (checked) {
+      setSelectedIds(prev => [...prev, appId])
+    } else {
+      setSelectedIds(prev => prev.filter(id => id !== appId))
+    }
+  }, [])
+
+  const handleClearSelection = useCallback(() => {
+    setSelectedIds([])
+  }, [])
+
+  // Bulk action handlers
+  const handleBulkUpdate = useCallback(async (applicationIds, payload) => {
+    setBulkLoading(true)
+    try {
+      await ApplicationService.bulkUpdate({
+        application_ids: applicationIds,
+        action: 'update_status',
+        status: payload.status
+      })
+      // Refresh the list
+      await fetchShortlisted()
+    } catch (error) {
+      throw error // Let BulkActionsToolbar handle error display
+    } finally {
+      setBulkLoading(false)
+    }
+  }, [fetchShortlisted])
+
+  const handleBulkShortlist = useCallback(async (applicationIds, action) => {
+    setBulkLoading(true)
+    try {
+      // Process each application individually since shortlist is per application
+      const promises = applicationIds.map(appId =>
+        ApplicationService.shortlistCandidate({
+          application_id: appId,
+          action: action
+        })
+      )
+      await Promise.all(promises)
+
+      // Refresh the list
+      await fetchShortlisted()
+    } catch (error) {
+      throw error
+    } finally {
+      setBulkLoading(false)
+    }
+  }, [fetchShortlisted])
+
+  const handleBulkExport = useCallback((applicationIds) => {
+    // Simple export - create CSV content
+    const selectedApps = applications.filter(app => applicationIds.includes(app.id))
+
+    const csvContent = [
+      ['Tên ứng viên', 'Email', 'Vị trí', 'Trạng thái', 'Ngày ứng tuyển'].join(','),
+      ...selectedApps.map(app => {
+        const profile = app.profiles || app.candidate || app.candidate?.profile || {}
+        const name = profile.full_name || profile.display_name || profile.name || 'Chưa có tên'
+        const email = profile.email || ''
+        const job = app.jobs || app.job || {}
+        const jobTitle = job.title || 'Vị trí không rõ'
+        const status = app.status || 'pending'
+        const appliedAt = app.applied_at ? new Date(app.applied_at).toLocaleDateString('vi-VN') : ''
+
+        return [name, email, jobTitle, status, appliedAt].map(field => `"${field}"`).join(',')
+      })
+    ].join('\n')
+
+    // Download CSV
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+    const link = document.createElement('a')
+    const url = URL.createObjectURL(blob)
+    link.setAttribute('href', url)
+    link.setAttribute('download', `shortlisted-candidates-${new Date().toISOString().split('T')[0]}.csv`)
+    link.style.visibility = 'hidden'
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+  }, [applications])
+
   return (
     <div className="section applications-list-page">
       <div className="applications-header">
@@ -167,6 +255,20 @@ export default function ShortlistedList() {
             </small>
           </div>
           <div className="filter-controls">
+              {/* Master checkbox for select all */}
+              {applications.length > 0 && (
+                <label className="select-all-checkbox">
+                  <input
+                    type="checkbox"
+                    checked={selectedIds.length === applications.length && applications.length > 0}
+                    onChange={(e) => handleSelectAll(e.target.checked)}
+                    disabled={bulkLoading}
+                    aria-label={`Chọn tất cả ${applications.length} ứng viên`}
+                    aria-describedby="bulk-actions-info"
+                  />
+                  <span>Chọn tất cả ({applications.length})</span>
+                </label>
+              )}
             <Select
               value={sortBy}
               onChange={(e) => {
@@ -188,9 +290,14 @@ export default function ShortlistedList() {
             </button>
           </div>
         </div>
-      </Card>
+        </Card>
 
-      {loading && (
+        {/* Hidden info for screen readers */}
+        <div id="bulk-actions-info" className="sr-only">
+          Chọn ứng viên để thực hiện các hành động hàng loạt như cập nhật trạng thái, thêm/bỏ khỏi shortlist, hoặc xuất danh sách.
+        </div>
+
+        {loading && (
         <Card padding="large">
           <div style={{ textAlign: 'center', padding: '40px' }}>
             <p>Đang tải...</p>
@@ -223,6 +330,16 @@ export default function ShortlistedList() {
 
       {!loading && !error && applications.length > 0 && (
         <>
+          {/* Bulk Actions Toolbar */}
+          <BulkActionsToolbar
+            selectedIds={selectedIds}
+            onClearSelection={handleClearSelection}
+            onBulkUpdate={handleBulkUpdate}
+            onBulkShortlist={handleBulkShortlist}
+            onBulkExport={handleBulkExport}
+            loading={bulkLoading}
+          />
+
           <div className="applications-card-grid">
             {applications.map((app) => {
               const profile = app.profiles || app.candidate || app.candidate?.profile || {}
@@ -238,7 +355,17 @@ export default function ShortlistedList() {
                   className="application-card"
                   hover
                 >
-                  <div className="application-card-header">
+                    <div className="application-card-header">
+                      {/* Individual checkbox */}
+                      <label className="card-checkbox">
+                        <input
+                          type="checkbox"
+                          checked={selectedIds.includes(app.id)}
+                          onChange={(e) => handleSelectItem(app.id, e.target.checked)}
+                          disabled={bulkLoading}
+                          aria-label={`Chọn ứng viên ${name}`}
+                        />
+                      </label>
                     <Badge
                       variant="success"
                       size="small"
@@ -274,14 +401,6 @@ export default function ShortlistedList() {
                         <span className="meta-label">Stage:</span>
                         <span>{app.current_stage?.stage_name || '--'}</span>
                       </div>
-                      {app.current_stage?.rating && (
-                        <div className="meta-item">
-                          <span className="meta-label">Rating:</span>
-                          <span className="rating-display">
-                            {renderRating(app.current_stage.rating)}
-                          </span>
-                        </div>
-                      )}
                       <div className="meta-item">
                         <span className="meta-label">Ngày ứng tuyển:</span>
                         <span>{formatDate(app.applied_at)}</span>
@@ -333,6 +452,42 @@ export default function ShortlistedList() {
           )}
         </>
       )}
+      )}
+
+      <style jsx>{`
+        .select-all-checkbox {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          font-size: 14px;
+          color: #374151;
+          cursor: pointer;
+          user-select: none;
+        }
+
+        .select-all-checkbox input[type="checkbox"] {
+          width: 16px;
+          height: 16px;
+          cursor: pointer;
+        }
+
+        .card-checkbox {
+          display: flex;
+          align-items: center;
+          margin-right: 8px;
+        }
+
+        .card-checkbox input[type="checkbox"] {
+          width: 16px;
+          height: 16px;
+          cursor: pointer;
+        }
+
+        .application-card.selected {
+          border-color: #3b82f6;
+          box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+        }
+      `}</style>
     </div>
   )
 }

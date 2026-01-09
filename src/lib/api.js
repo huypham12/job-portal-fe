@@ -608,6 +608,18 @@ export const ApplicationService = {
    * Get application stages (Candidate)
    */
   getStages: (id) => api.get(`/api/applications/candidate/${id}/stages`),
+  /**
+   * Get single stage details (Candidate)
+   */
+  getStageDetail: (id, stageId) => api.get(`/api/applications/candidate/${id}/stage/${stageId}`),
+  /**
+   * Candidate accepts a stage
+   */
+  acceptStage: (id, stageId) => api.patch(`/api/applications/candidate/${id}/stage/${stageId}/accept`),
+  /**
+   * Candidate declines a stage
+   */
+  declineStage: (id, stageId, reason) => api.patch(`/api/applications/candidate/${id}/stage/${stageId}/decline`, { reason }),
 
   /**
    * Get application timeline (Recruiter) - includes all stages
@@ -625,6 +637,12 @@ export const ApplicationService = {
    */
   updateStage: (id, data) =>
     api.patch(`/api/applications/recruiter/${id}/stage`, data),
+  /**
+   * Make a decision after a stage (Recruiter)
+   * action: 'create_next_stage' | 'accept_application'
+   */
+  makeStageDecision: (id, stageId, data) =>
+    api.post(`/api/applications/recruiter/${id}/stage/${stageId}/decision`, data),
 
   /**
    * Add application note (Recruiter)
@@ -641,7 +659,7 @@ export const ApplicationService = {
   /**
    * Add or remove candidate from shortlist (Recruiter)
    */
-  shortlistCandidate: (data) => api.post("/api/applications/shortlist", data),
+  shortlistCandidate: (data) => api.post("/api/applications/recruiter/shortlist", data),
 
   /**
    * Get shortlisted candidates (Recruiter)
@@ -654,13 +672,13 @@ export const ApplicationService = {
     if (filters.sort_by) params.append("sort_by", filters.sort_by);
     if (filters.order) params.append("order", filters.order);
     const query = params.toString();
-    return api.get(`/api/applications/shortlisted?${query}`);
+    return api.get(`/api/applications/recruiter/shortlisted?${query}`);
   },
 
   /**
    * Compare multiple candidates side-by-side (Recruiter)
    */
-  compareCandidates: (data) => api.post("/api/applications/compare", data),
+  compareCandidates: (data) => api.post("/api/applications/recruiter/compare", data),
 
   /**
    * Get application documents (Candidate)

@@ -3,6 +3,7 @@ import { useNavigate, Link } from "react-router-dom";
 import { JobService } from "../lib/api.js";
 import { jobsApi } from "../services/jobsApi";
 import { useMyJobs, useBulkJobActions } from "../hooks/useJobs";
+import { useSocket } from "../hooks/useSocket";
 import {
   Button,
   Card,
@@ -90,6 +91,9 @@ export default function MyJobs() {
     bulkOpen,
   } = useBulkJobActions();
 
+  // Socket connection for real-time updates
+  const { isConnected, onNotification } = useSocket();
+
   // Debounced search effect
   useEffect(() => {
     const timeoutId = setTimeout(() => {
@@ -98,7 +102,18 @@ export default function MyJobs() {
 
     return () => clearTimeout(timeoutId);
   }, [searchQuery, updateFilters]);
+  // Listen for real-time updates via Socket.IO
+  useEffect(() => {
+    if (!isConnected) return;
 
+    onNotification((notification) => {
+      // Refresh jobs list when application received
+      if (notification.type === "application_received") {
+        console.log("🔔 Ứng viên mới:", notification.content);
+        refresh();
+      }
+    });
+  }, [isConnected, onNotification, refresh]);
   const handleStatusChange = (value) => {
     setStatusFilter(value);
     updateFilters({ status: value || undefined });

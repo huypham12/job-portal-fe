@@ -10,12 +10,14 @@
   },
   "dependencies": {
     "@headlessui/react": "^2.1.2",
+    "@tanstack/react-query": "^5.90.16",
     "clsx": "^2.1.1",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-router-dom": "^6.28.0",
     "react-select": "^5.8.1",
     "sharp": "^0.34.5",
+    "socket.io-client": "^4.8.3",
     "zod": "^4.3.5"
   },
   "devDependencies": {
