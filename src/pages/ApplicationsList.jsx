@@ -10,6 +10,7 @@ import {
   Input,
   Select,
   ConfirmModal,
+  Modal,
 } from "../components/shared";
 import CompareModal from "../components/CompareModal";
 import {
@@ -108,6 +109,7 @@ export default function ApplicationsList() {
     total_pages: 1,
   });
   const [shortlistedIds, setShortlistedIds] = useState(new Set());
+  const [showOnboardingBanner, setShowOnboardingBanner] = useState(true);
 
   // Socket connection for real-time updates
   const { isConnected, onNotification } = useSocket();
@@ -171,6 +173,12 @@ export default function ApplicationsList() {
 
       setApplications(data);
       setPagination(pag);
+
+      // Check if onboarding banner should be shown
+      const dismissed = localStorage.getItem(
+        `onboarding_banner_dismissed_${jobId}`
+      );
+      setShowOnboardingBanner(!dismissed);
     } catch (err) {
       console.error("Failed to fetch applications:", err);
       console.error("Error details:", err?.data || err?.response || err);
@@ -229,7 +237,8 @@ export default function ApplicationsList() {
 
       if (
         (notification.type === "application_status_changed" ||
-          notification.type === "application_stage_updated") &&
+          notification.type === "application_stage_updated" ||
+          notification.type === "interview_scheduled") &&
         notificationJobId === jobId
       ) {
         console.log("🔔 Trạng thái ứng viên thay đổi:", notification.content);
@@ -374,6 +383,36 @@ export default function ApplicationsList() {
     }
   };
 
+  // Handler 1: Move applications to interviewing status (no stage creation)
+  const handleMoveToInterviewing = async () => {
+    if (selectedApps.length === 0) {
+      alert("Vui lòng chọn ít nhất một ứng viên");
+      return;
+    }
+
+    try {
+      await ApplicationService.bulkUpdate({
+        application_ids: selectedApps,
+        action: "interview",
+      });
+
+      alert(
+        `Đã chuyển ${selectedApps.length} ứng viên sang trạng thái "Đang phỏng vấn" thành công!`
+      );
+
+      setSelectedApps([]);
+      fetchApplications();
+      fetchStats();
+    } catch (err) {
+      console.error("Move to interviewing error:", err);
+      alert(
+        err?.data?.message ||
+          err?.message ||
+          "Không thể chuyển trạng thái. Vui lòng thử lại."
+      );
+    }
+  };
+
   const handleCompare = () => {
     if (selectedApps.length >= 2 && selectedApps.length <= 4) {
       setCompareCandidates(selectedApps);
@@ -417,12 +456,21 @@ export default function ApplicationsList() {
             <p className="applications-subtitle">Tin tuyển dụng: {job.title}</p>
           )}
         </div>
-        <Button
-          variant="outline"
-          onClick={() => navigate(`/recruiter/jobs/${jobId}/manage`)}
-        >
-          Quay lại
-        </Button>
+        <div style={{ display: "flex", gap: "12px" }}>
+          <Button
+            variant="outline"
+            onClick={() => navigate(`/recruiter/jobs/${jobId}/rounds`)}
+            title="Xem tổng quan các vòng phỏng vấn"
+          >
+            📊 Dashboard PV
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => navigate(`/recruiter/jobs/${jobId}/manage`)}
+          >
+            Quay lại
+          </Button>
+        </div>
       </div>
 
       {/* Stats Section */}
@@ -486,6 +534,93 @@ export default function ApplicationsList() {
         </Card>
       )}
 
+      {/* Onboarding Banner */}
+      {showOnboardingBanner &&
+        statsData.by_status?.[APPLICATION_STATUSES.INTERVIEWING] > 0 &&
+        applications.some(
+          (a) =>
+            a.status === APPLICATION_STATUSES.INTERVIEWING && !a.current_stage
+        ) && (
+          <Card
+            padding="medium"
+            style={{
+              background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+              color: "white",
+              border: "none",
+              marginBottom: "20px",
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: "20px" }}>
+              <div style={{ fontSize: "48px", flexShrink: 0 }}>📋</div>
+              <div style={{ flex: 1 }}>
+                <h3
+                  style={{
+                    margin: "0 0 8px 0",
+                    fontSize: "18px",
+                    fontWeight: 600,
+                  }}
+                >
+                  Bước tiếp theo: Tạo giai đoạn phỏng vấn
+                </h3>
+                <p
+                  style={{
+                    margin: "0 0 16px 0",
+                    fontSize: "14px",
+                    opacity: 0.95,
+                  }}
+                >
+                  Bạn có{" "}
+                  <strong>
+                    {statsData.by_status?.[APPLICATION_STATUSES.INTERVIEWING]}{" "}
+                    ứng viên
+                  </strong>{" "}
+                  đang ở trạng thái phỏng vấn. Hãy tạo các giai đoạn phỏng vấn
+                  (schedule) để tiếp tục quy trình tuyển dụng.
+                </p>
+                <Button
+                  variant="outline"
+                  onClick={() =>
+                    navigate(`/recruiter/jobs/${jobId}/stage-management`)
+                  }
+                  style={{
+                    background: "white",
+                    color: "#667eea",
+                    border: "none",
+                    fontWeight: 600,
+                  }}
+                >
+                  🎯 Đến trang quản lý Stage →
+                </Button>
+              </div>
+              <button
+                onClick={() => {
+                  localStorage.setItem(
+                    `onboarding_banner_dismissed_${jobId}`,
+                    "true"
+                  );
+                  setShowOnboardingBanner(false);
+                }}
+                style={{
+                  alignSelf: "flex-start",
+                  background: "transparent",
+                  border: "none",
+                  color: "white",
+                  fontSize: "24px",
+                  cursor: "pointer",
+                  padding: "4px 8px",
+                  opacity: 0.8,
+                  transition: "opacity 0.2s",
+                }}
+                onMouseEnter={(e) => (e.target.style.opacity = "1")}
+                onMouseLeave={(e) => (e.target.style.opacity = "0.8")}
+                title="Ẩn banner này"
+              >
+                ✕
+              </button>
+            </div>
+          </Card>
+        )}
+
       {/* Filters Section */}
       <Card padding="medium" className="filters-card">
         <div className="filters-row">
@@ -537,6 +672,43 @@ export default function ApplicationsList() {
           </div>
           <div className="view-toggle">
             <button
+              className="manage-stage-btn"
+              onClick={() =>
+                navigate(`/recruiter/jobs/${jobId}/stage-management`)
+              }
+              title="Tạo và quản lý giai đoạn phỏng vấn cho nhiều ứng viên cùng lúc"
+              style={{
+                padding: "8px 16px",
+                background: "#10b981",
+                color: "white",
+                border: "none",
+                borderRadius: "6px",
+                cursor: "pointer",
+                fontWeight: 500,
+                marginRight: "12px",
+                position: "relative",
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+              }}
+            >
+              🎯 Quản lý Stage
+              {statsData.by_status?.[APPLICATION_STATUSES.INTERVIEWING] > 0 && (
+                <span
+                  style={{
+                    background: "#ef4444",
+                    color: "white",
+                    padding: "2px 8px",
+                    borderRadius: "12px",
+                    fontSize: "12px",
+                    fontWeight: 600,
+                  }}
+                >
+                  {statsData.by_status[APPLICATION_STATUSES.INTERVIEWING]}
+                </span>
+              )}
+            </button>
+            <button
               className={`view-toggle-btn ${
                 viewMode === "table" ? "active" : ""
               }`}
@@ -584,6 +756,20 @@ export default function ApplicationsList() {
                 onClick={() => handleBulkAction("review")}
               >
                 Đánh dấu đã xem
+              </Button>
+              <Button
+                variant="primary"
+                size="small"
+                onClick={handleMoveToInterviewing}
+              >
+                ➡️ Chuyển sang phỏng vấn
+              </Button>
+              <Button
+                variant="outline"
+                size="small"
+                onClick={() => handleBulkAction("accept")}
+              >
+                Chấp nhận
               </Button>
               <Button
                 variant="outline"
@@ -752,7 +938,27 @@ export default function ApplicationsList() {
                             {STATUS_LABELS[status] || status}
                           </Badge>
                         </td>
-                        <td>{app.current_stage?.stage_name || "--"}</td>
+                        <td>
+                          <div
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: "8px",
+                            }}
+                          >
+                            {app.current_stage?.stage_name || "--"}
+                            {app.current_stage?.metadata
+                              ?.is_group_interview && (
+                              <Badge
+                                variant="info"
+                                size="small"
+                                title="Group Interview Round"
+                              >
+                                👥
+                              </Badge>
+                            )}
+                          </div>
+                        </td>
                         <td>{formatDate(app.applied_at)}</td>
                         <td>
                           <div className="application-actions">
@@ -845,7 +1051,25 @@ export default function ApplicationsList() {
                       <div className="application-card-meta">
                         <div className="meta-item">
                           <span className="meta-label">Stage:</span>
-                          <span>{app.current_stage?.stage_name || "--"}</span>
+                          <div
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: "8px",
+                            }}
+                          >
+                            <span>{app.current_stage?.stage_name || "--"}</span>
+                            {app.current_stage?.metadata
+                              ?.is_group_interview && (
+                              <Badge
+                                variant="info"
+                                size="small"
+                                title="Group Interview Round"
+                              >
+                                👥
+                              </Badge>
+                            )}
+                          </div>
                         </div>
                         <div className="meta-item">
                           <span className="meta-label">Ngày ứng tuyển:</span>

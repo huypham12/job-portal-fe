@@ -611,15 +611,20 @@ export const ApplicationService = {
   /**
    * Get single stage details (Candidate)
    */
-  getStageDetail: (id, stageId) => api.get(`/api/applications/candidate/${id}/stage/${stageId}`),
+  getStageDetail: (id, stageId) =>
+    api.get(`/api/applications/candidate/${id}/stage/${stageId}`),
   /**
    * Candidate accepts a stage
    */
-  acceptStage: (id, stageId) => api.patch(`/api/applications/candidate/${id}/stage/${stageId}/accept`),
+  acceptStage: (id, stageId) =>
+    api.patch(`/api/applications/candidate/${id}/stage/${stageId}/accept`),
   /**
    * Candidate declines a stage
    */
-  declineStage: (id, stageId, reason) => api.patch(`/api/applications/candidate/${id}/stage/${stageId}/decline`, { reason }),
+  declineStage: (id, stageId, reason) =>
+    api.patch(`/api/applications/candidate/${id}/stage/${stageId}/decline`, {
+      reason,
+    }),
 
   /**
    * Get application timeline (Recruiter) - includes all stages
@@ -633,6 +638,24 @@ export const ApplicationService = {
     api.post(`/api/applications/recruiter/${id}/stage`, data),
 
   /**
+   * Bulk create interview stages with shared round_id (Recruiter)
+   */
+  bulkCreateStages: (data) =>
+    api.post("/api/applications/recruiter/bulk/create-stages", data),
+
+  /**
+   * Get interview round details (Recruiter)
+   */
+  getInterviewRound: (roundId) =>
+    api.get(`/api/applications/recruiter/rounds/${roundId}`),
+
+  /**
+   * Get all interview rounds for a job (Recruiter)
+   */
+  getJobInterviewRounds: (jobId) =>
+    api.get(`/api/applications/recruiter/job/${jobId}/rounds`),
+
+  /**
    * Update application stage (Recruiter)
    */
   updateStage: (id, data) =>
@@ -642,7 +665,16 @@ export const ApplicationService = {
    * action: 'create_next_stage' | 'accept_application'
    */
   makeStageDecision: (id, stageId, data) =>
-    api.post(`/api/applications/recruiter/${id}/stage/${stageId}/decision`, data),
+    api.post(
+      `/api/applications/recruiter/${id}/stage/${stageId}/decision`,
+      data
+    ),
+
+  /**
+   * Bulk stage decision for multiple candidates (Recruiter)
+   */
+  bulkStageDecision: (data) =>
+    api.post("/api/applications/recruiter/bulk/stage-decision", data),
 
   /**
    * Add application note (Recruiter)
@@ -659,7 +691,8 @@ export const ApplicationService = {
   /**
    * Add or remove candidate from shortlist (Recruiter)
    */
-  shortlistCandidate: (data) => api.post("/api/applications/recruiter/shortlist", data),
+  shortlistCandidate: (data) =>
+    api.post("/api/applications/recruiter/shortlist", data),
 
   /**
    * Get shortlisted candidates (Recruiter)
@@ -678,7 +711,8 @@ export const ApplicationService = {
   /**
    * Compare multiple candidates side-by-side (Recruiter)
    */
-  compareCandidates: (data) => api.post("/api/applications/recruiter/compare", data),
+  compareCandidates: (data) =>
+    api.post("/api/applications/recruiter/compare", data),
 
   /**
    * Get application documents (Candidate)
