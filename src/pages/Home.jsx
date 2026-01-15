@@ -188,7 +188,8 @@ export default function Home() {
                 }`}
                 onClick={() => setHeroTab("jobs")}
               >
-                Việc làm cho bạn
+                <span className="tab-icon">💼</span>
+                <span className="tab-label">Việc làm cho bạn</span>
               </button>
               <button
                 className={`home-hero__tab ${
@@ -196,11 +197,12 @@ export default function Home() {
                 }`}
                 onClick={() => setHeroTab("recruiters")}
               >
-                Nhà tuyển dụng quan tâm
+                <span className="tab-icon">🤝</span>
+                <span className="tab-label">Nhà tuyển dụng quan tâm</span>
               </button>
             </div>
             <Link to="/search" className="home-panel__link">
-              Xem tất cả
+              <span style={{ whiteSpace: "nowrap" }}>Xem tất cả →</span>
             </Link>
           </div>
 
@@ -212,29 +214,46 @@ export default function Home() {
                   className="home-panel__card"
                   key={job.id}
                 >
-                  <p className="home-panel__title">{job.title}</p>
-                  <p className="muted">
-                    {job.company} | {job.location}
-                  </p>
-                  <div className="home-panel__tags">
-                    {job.tags.slice(0, 2).map((tag) => (
-                      <span key={tag}>{tag}</span>
-                    ))}
+                  <div className="job-card-header">
+                    <div className="job-icon">💼</div>
+                    <div className="job-content">
+                      <p className="home-panel__title">{job.title}</p>
+                      <p className="job-meta muted">
+                        <span className="job-company">🏢 {job.company}</span>
+                        <span className="job-divider">•</span>
+                        <span className="job-location">📍 {job.location}</span>
+                      </p>
+                    </div>
                   </div>
+                  {job.tags && job.tags.length > 0 && (
+                    <div className="home-panel__tags">
+                      {job.tags.slice(0, 2).map((tag) => (
+                        <span className="tag-pill" key={tag}>
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </Link>
               ))}
               {!suggestions.length && (
-                <p className="home-panel__empty">
-                  {useMocks
-                    ? "Nhập từ khóa để xem gợi ý."
-                    : "Gợi ý sẽ hiển thị khi có dữ liệu thật — vui lòng tìm kiếm."}
-                </p>
+                <div className="home-panel__empty">
+                  <div className="empty-icon">🔍</div>
+                  <p className="empty-text">
+                    {useMocks
+                      ? "Nhập từ khóa để xem gợi ý."
+                      : "Gợi ý sẽ hiển thị khi có dữ liệu thật — vui lòng tìm kiếm."}
+                  </p>
+                </div>
               )}
             </div>
           ) : (
             <div className="home-hero__recruiter-list">
               {loadingConnected ? (
-                <p className="muted">Đang tải...</p>
+                <div className="loading-state">
+                  <div className="loading-spinner">⏳</div>
+                  <p className="muted">Đang tải...</p>
+                </div>
               ) : connectedRecruiters.length ? (
                 connectedRecruiters.map((rec) => {
                   const initial = (rec.companyName || "C")[0].toUpperCase();
@@ -244,32 +263,46 @@ export default function Home() {
                         {rec.logoUrl ? (
                           <img src={rec.logoUrl} alt={rec.companyName} />
                         ) : (
-                          initial
+                          <div className="logo-initial">{initial}</div>
                         )}
                       </div>
                       <div className="recruiter-body">
                         <div className="recruiter-row">
-                          <strong>{rec.companyName}</strong>
+                          <strong className="company-name">
+                            {rec.companyName}
+                          </strong>
                           <span className="recruiter-time">
                             {rec.connectedAt}
                           </span>
                         </div>
-                        <p className="muted">
-                          {rec.recruiterName ? `${rec.recruiterName} · ` : ""}
-                          Recruiter · {rec.location}
+                        <p className="recruiter-info muted">
+                          {rec.recruiterName && (
+                            <>
+                              <span className="recruiter-icon">👤</span>
+                              <span>{rec.recruiterName}</span>
+                              <span className="info-divider">·</span>
+                            </>
+                          )}
+                          <span>Recruiter</span>
+                          <span className="info-divider">·</span>
+                          <span className="location-info">
+                            📍 {rec.location}
+                          </span>
                         </p>
                         <div className="recruiter-actions">
                           <Link
                             to={`/companies/${rec.id || ""}`}
-                            className="link small"
+                            className="link small action-link"
                           >
-                            Xem công ty
+                            <span className="action-icon">🏢</span>
+                            <span>Xem công ty</span>
                           </Link>
                           <Link
                             to={`/search?companyId=${rec.id || ""}`}
-                            className="link small"
+                            className="link small action-link"
                           >
-                            Xem tin tuyển dụng
+                            <span className="action-icon">📋</span>
+                            <span>Xem tin tuyển dụng</span>
                           </Link>
                         </div>
                       </div>
@@ -277,10 +310,13 @@ export default function Home() {
                   );
                 })
               ) : (
-                <p className="home-panel__empty">
-                  Chưa có nhà tuyển dụng nào kết nối với bạn. Hoàn thiện hồ sơ
-                  để được chú ý hơn.
-                </p>
+                <div className="home-panel__empty">
+                  <div className="empty-icon">🔔</div>
+                  <p className="empty-text">
+                    Chưa có nhà tuyển dụng nào kết nối với bạn. Hoàn thiện hồ sơ
+                    để được chú ý hơn.
+                  </p>
+                </div>
               )}
             </div>
           )}

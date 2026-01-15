@@ -277,7 +277,10 @@ export function useJobManage(jobId) {
           }
 
           // Normalize work arrangements
-          if (copy.job_work_arrangements && typeof copy.job_work_arrangements === 'object') {
+          if (
+            copy.job_work_arrangements &&
+            typeof copy.job_work_arrangements === "object"
+          ) {
             copy.work_arrangements = copy.job_work_arrangements;
           }
         } catch (e) {
@@ -316,25 +319,22 @@ export function useJobManage(jobId) {
     [jobId, job, fetchJob]
   );
 
-  const publish = useCallback(
-    async () => {
-      if (!jobId) return;
+  const publish = useCallback(async () => {
+    if (!jobId) return;
 
-      try {
-        const result = await jobsApi.publishJobs({ job_ids: [jobId] });
-        // Optimistic update - draft -> pending_approval
-        if (job && job.status === 'draft') {
-          setJob((prev) => ({ ...prev, status: 'pending_approval' }));
-        }
-        return result;
-      } catch (err) {
-        // Refresh data on error
-        await fetchJob();
-        throw err;
+    try {
+      const result = await jobsApi.publishJobs({ job_ids: [jobId] });
+      // Optimistic update - draft -> pending_approval
+      if (job && job.status === "draft") {
+        setJob((prev) => ({ ...prev, status: "pending_approval" }));
       }
-    },
-    [jobId, job, fetchJob]
-  );
+      return result;
+    } catch (err) {
+      // Refresh data on error
+      await fetchJob();
+      throw err;
+    }
+  }, [jobId, job, fetchJob]);
 
   const deleteJob = useCallback(async () => {
     if (!jobId) return;
@@ -383,7 +383,9 @@ export function useBulkJobActions() {
         /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
       const ids =
         Array.isArray(jobIds) && jobIds.length > 0
-          ? jobIds.map((id) => String(id).trim()).filter((id) => uuidRe.test(id))
+          ? jobIds
+              .map((id) => String(id).trim())
+              .filter((id) => uuidRe.test(id))
           : [];
 
       if (ids.length === 0) {
@@ -426,7 +428,9 @@ export function useBulkJobActions() {
         /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
       const ids =
         Array.isArray(jobIds) && jobIds.length > 0
-          ? jobIds.map((id) => String(id).trim()).filter((id) => uuidRe.test(id))
+          ? jobIds
+              .map((id) => String(id).trim())
+              .filter((id) => uuidRe.test(id))
           : [];
 
       if (ids.length === 0) {
@@ -461,7 +465,9 @@ export function useBulkJobActions() {
         /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
       const ids =
         Array.isArray(jobIds) && jobIds.length > 0
-          ? jobIds.map((id) => String(id).trim()).filter((id) => uuidRe.test(id))
+          ? jobIds
+              .map((id) => String(id).trim())
+              .filter((id) => uuidRe.test(id))
           : [];
 
       if (ids.length === 0) {
@@ -678,28 +684,53 @@ export function useJobsSearch(initialFilters = {}) {
   const [error, setError] = useState(null);
   const [total, setTotal] = useState(0);
   const [took, setTook] = useState(0);
+  const [cacheHit, setCacheHit] = useState(false);
+  const [cachedAt, setCachedAt] = useState(null);
+
+  // Search function without debounce - will be wrapped separately
+  const executeSearch = useCallback(async (state) => {
+    setLoading(true);
+    setError(null);
+
+    // Reset cache indicators before new search
+    setCacheHit(false);
+    setCachedAt(null);
+
+    try {
+      const response = await searchService.searchJobs(state);
+
+      // Update all state values to trigger re-render
+      setResults(response.hits || []);
+      setTotal(response.total || 0);
+      setTook(response.total_took_ms || response.took_ms || 0);
+      setCacheHit(!!response.cache_hit); // Force boolean
+      setCachedAt(response.cached_at || null);
+
+      console.log("[Search] Response metadata:", {
+        total_took_ms: response.total_took_ms,
+        took_ms: response.took_ms,
+        cache_hit: response.cache_hit,
+        cached_at: response.cached_at,
+      });
+    } catch (err) {
+      console.error("Search failed:", err);
+      setError(err.message || "Có lỗi xảy ra khi tìm kiếm");
+      setResults([]);
+      setTotal(0);
+      setTook(0);
+      setCacheHit(false);
+      setCachedAt(null);
+    } finally {
+      setLoading(false);
+    }
+  }, []); // No dependencies - pure function
 
   // Debounced search function (300ms delay for q input)
   const performSearch = useCallback(
-    debounce(async (state) => {
-      setLoading(true);
-      setError(null);
-
-      try {
-        const response = await searchService.searchJobs(state);
-        setResults(response.hits || []);
-        setTotal(response.total || 0);
-        setTook(response.took_ms || 0);
-      } catch (err) {
-        console.error("Search failed:", err);
-        setError(err.message || "Có lỗi xảy ra khi tìm kiếm");
-        setResults([]);
-        setTotal(0);
-      } finally {
-        setLoading(false);
-      }
+    debounce((state) => {
+      executeSearch(state);
     }, 300),
-    []
+    [executeSearch]
   );
 
   // Update single filter field
@@ -725,10 +756,15 @@ export function useJobsSearch(initialFilters = {}) {
     setSearchState(defaultState);
   }, []);
 
-  // Apply current filters (trigger search)
+  // Immediate search without debounce (for actions like "Apply Filters")
+  const searchNow = useCallback(() => {
+    executeSearch(searchState);
+  }, [searchState, executeSearch]);
+
+  // Apply current filters (trigger immediate search)
   const applyFilters = useCallback(() => {
-    performSearch(searchState);
-  }, [searchState, performSearch]);
+    searchNow();
+  }, [searchNow]);
 
   // Navigation helpers
   const goToPage = useCallback(
@@ -845,6 +881,8 @@ export function useJobsSearch(initialFilters = {}) {
     error,
     total,
     took,
+    cacheHit,
+    cachedAt,
     hasActiveFilters,
     activeFilterCount,
 
@@ -854,6 +892,7 @@ export function useJobsSearch(initialFilters = {}) {
     resetFilters,
     applyFilters,
     search,
+    searchNow, // Immediate search without debounce
     goToPage,
     nextPage,
     prevPage,
