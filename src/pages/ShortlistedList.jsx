@@ -452,7 +452,6 @@ export default function ShortlistedList() {
           )}
         </>
       )}
-      )}
 
       <style jsx>{`
         .select-all-checkbox {

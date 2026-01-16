@@ -305,31 +305,87 @@ export default function MyApplicationDetail() {
                     <div className="stage-scheduled">
                       <span className="calendar-icon">📅</span>
                       Dự kiến: {formatDate(stage.scheduled_at)}
-                      {/* Show accept/decline buttons only if candidate hasn't responded yet */}
-                      {stage.status === "scheduled" &&
-                        !stage.candidate_accepted_at &&
-                        !stage.candidate_declined_at && (
-                          <div
-                            style={{
-                              marginTop: 8,
-                              display: "flex",
-                              gap: 8,
-                            }}
-                          >
-                            <button
-                              className="btn success small"
-                              onClick={() => handleAcceptStage(stage.id)}
+                      {/* Show accept/decline buttons only if candidate hasn't responded yet and deadline hasn't passed */}
+                      {(() => {
+                        const hasResponded =
+                          stage.candidate_accepted_at ||
+                          stage.candidate_declined_at;
+                        const isScheduled = stage.status === "scheduled";
+
+                        // Check if deadline has passed
+                        const now = new Date();
+                        const deadline = stage.candidate_response_deadline
+                          ? new Date(stage.candidate_response_deadline)
+                          : null;
+
+                        // Debug logging
+                        if (deadline) {
+                          console.log("🕒 Deadline check:", {
+                            stage_name: stage.stage_name,
+                            deadline_string: stage.candidate_response_deadline,
+                            deadline_parsed: deadline.toISOString(),
+                            now: now.toISOString(),
+                            deadlinePassed: deadline < now,
+                            diff_hours: (deadline - now) / (1000 * 60 * 60),
+                          });
+                        }
+
+                        const deadlinePassed = deadline
+                          ? deadline < now
+                          : false;
+
+                        if (isScheduled && !hasResponded && !deadlinePassed) {
+                          return (
+                            <div
+                              style={{
+                                marginTop: 8,
+                                display: "flex",
+                                gap: 8,
+                              }}
                             >
-                              ✅ Tham gia
-                            </button>
-                            <button
-                              className="btn danger small"
-                              onClick={() => handleDeclineStage(stage.id)}
-                            >
-                              ❌ Từ chối
-                            </button>
-                          </div>
-                        )}
+                              <button
+                                className="btn success small"
+                                onClick={() => handleAcceptStage(stage.id)}
+                              >
+                                ✅ Tham gia
+                              </button>
+                              <button
+                                className="btn danger small"
+                                onClick={() => handleDeclineStage(stage.id)}
+                              >
+                                ❌ Từ chối
+                              </button>
+                            </div>
+                          );
+                        }
+
+                        // Show deadline passed message
+                        if (isScheduled && !hasResponded && deadlinePassed) {
+                          return (
+                            <div style={{ marginTop: 8 }}>
+                              <span
+                                className="status-pill"
+                                style={{
+                                  background: "#f59e0b",
+                                  color: "white",
+                                }}
+                              >
+                                ⏰ Đã hết hạn phản hồi (
+                                {deadline ? formatDate(deadline) : "N/A"})
+                              </span>
+                              <p
+                                className="muted small"
+                                style={{ marginTop: 4 }}
+                              >
+                                Vui lòng liên hệ nhà tuyển dụng nếu bạn vẫn muốn
+                                tham gia.
+                              </p>
+                            </div>
+                          );
+                        }
+
+                        return null;
+                      })()}
                       {/* If candidate already accepted, show accepted badge */}
                       {stage.candidate_accepted_at && (
                         <div style={{ marginTop: 8 }}>

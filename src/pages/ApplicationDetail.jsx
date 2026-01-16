@@ -162,6 +162,7 @@ export default function ApplicationDetail() {
   const { id } = useParams();
   const [application, setApplication] = useState(null);
   const [stages, setStages] = useState([]);
+  const [documents, setDocuments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState("info");
@@ -216,6 +217,22 @@ export default function ApplicationDetail() {
         setStages(stagesData);
       } catch (err) {
         console.error("Failed to fetch stages:", err);
+      }
+
+      // Fetch documents (for recruiter)
+      if (isEmployer()) {
+        try {
+          console.log("Fetching documents for application:", id);
+          const docsResponse = await ApplicationService.getDocumentsRecruiter(
+            id
+          );
+          console.log("Documents response:", docsResponse);
+          const docsData = docsResponse?.data || docsResponse || [];
+          console.log("Parsed documents data:", docsData);
+          setDocuments(docsData);
+        } catch (err) {
+          console.error("Failed to fetch documents:", err);
+        }
       }
     } catch (err) {
       console.error("Failed to fetch application:", err);
@@ -722,6 +739,68 @@ export default function ApplicationDetail() {
                 </div>
               )}
             </div>
+          </Card>
+
+          {/* Additional Documents Section */}
+          <Card padding="medium" className="documents-card">
+            <h2 className="section-title">Tài liệu bổ sung</h2>
+            {documents.length === 0 ? (
+              <p style={{ color: "#94a3b8", margin: "12px 0" }}>
+                Ứng viên chưa tải lên tài liệu bổ sung nào.
+              </p>
+            ) : (
+              <div className="documents-list">
+                {documents.map((doc) => (
+                  <div
+                    key={doc.id}
+                    className="document-item"
+                    style={{
+                      padding: "12px",
+                      border: "1px solid #e5e7eb",
+                      borderRadius: "6px",
+                      marginBottom: "8px",
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                    }}
+                  >
+                    <div>
+                      <div style={{ fontWeight: 500, marginBottom: "4px" }}>
+                        {doc.document_type || "Tài liệu"}
+                      </div>
+                      <div style={{ fontSize: "13px", color: "#64748b" }}>
+                        {formatDate(doc.created_at)}
+                      </div>
+                    </div>
+                    {doc.file_url && (
+                      <div style={{ display: "flex", gap: "8px" }}>
+                        <Button
+                          variant="outline"
+                          size="small"
+                          onClick={() => window.open(doc.file_url, "_blank")}
+                        >
+                          Xem
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="small"
+                          onClick={() =>
+                            downloadFile(
+                              doc.file_url,
+                              `${doc.document_type || "document"}_${
+                                application?.profiles?.full_name || "candidate"
+                              }.pdf`
+                            )
+                          }
+                        >
+                          Tải xuống
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
           </Card>
 
           {/* Application Info */}

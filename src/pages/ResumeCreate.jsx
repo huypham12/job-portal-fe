@@ -447,18 +447,6 @@ export default function ResumeCreate() {
           (sections.personal_info?.data || {}).avatar_url ||
           profileData?.avatar_url,
       };
-      // Normalize additional sections so backend and template can rely on structured objects
-      const normalizedProjects = (formData.projects || []).map((p) =>
-        typeof p === "string" ? { name: p } : p
-      );
-      const normalizedLanguages = (formData.languages || []).map((l) =>
-        typeof l === "string"
-          ? { name: l, proficiency_level: "intermediate" }
-          : l
-      );
-      const normalizedReferences = (formData.references || []).map((r) =>
-        typeof r === "string" ? { name: r } : r
-      );
 
       const content = {
         personal_info: personalInfo,
@@ -559,10 +547,37 @@ export default function ResumeCreate() {
                 description,
               }))
           : [],
-        projects: normalizedProjects,
-        languages: normalizedLanguages,
+        // Additional sections - already full objects from Section components
+        // Projects: name, role, client, tech_stack, description, start_date, end_date, is_current, highlights, links
+        projects: (formData.projects || []).map((p) => ({
+          name: p.name,
+          role: p.role,
+          client: p.client,
+          tech_stack: p.tech_stack,
+          description: p.description,
+          start_date: p.start_date,
+          end_date: p.end_date,
+          is_current: p.is_current,
+          highlights: p.highlights,
+          links: p.links,
+        })),
+        // Languages: name, proficiency_level, certificate, certificate_url
+        languages: (formData.languages || []).map((l) => ({
+          name: l.name,
+          proficiency_level: l.proficiency_level,
+          certificate: l.certificate,
+          certificate_url: l.certificate_url,
+        })),
         summary: formData.summary || "",
-        references: normalizedReferences,
+        // References: name, position, company, email, phone, relationship
+        references: (formData.references || []).map((r) => ({
+          name: r.name,
+          position: r.position,
+          company: r.company,
+          email: r.email,
+          phone: r.phone,
+          relationship: r.relationship,
+        })),
       };
 
       // Build dynamic sections_order respecting user's includedSections choice and actual content
@@ -589,6 +604,13 @@ export default function ResumeCreate() {
         theme: formData.theme || "modern",
         sections_order: sectionsOrder,
       };
+
+      // Debug: Log data being sent to backend
+      console.log("=== DEBUG: Data being sent to backend ===");
+      console.log("Projects:", JSON.stringify(content.projects, null, 2));
+      console.log("Languages:", JSON.stringify(content.languages, null, 2));
+      console.log("References:", JSON.stringify(content.references, null, 2));
+      console.log("Sections Order:", sectionsOrder);
 
       let result;
       // Always use createResume with full content (no need for createResumeFromProfile anymore)

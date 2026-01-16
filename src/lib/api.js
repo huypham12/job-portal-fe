@@ -578,6 +578,13 @@ export const ApplicationService = {
     api.get(`/api/applications/recruiter/job/${jobId}/stats`),
 
   /**
+   * Get dashboard statistics for recruiter (Recruiter)
+   * @returns {Promise<{data: {active_jobs: number, draft_jobs: number, total_applications: number}}>}
+   */
+  getDashboardStats: () =>
+    api.get("/api/applications/recruiter/dashboard/stats"),
+
+  /**
    * Get application detail (Candidate)
    */
   getDetail: (id) => api.get(`/api/applications/candidate/${id}`),
@@ -718,6 +725,12 @@ export const ApplicationService = {
    * Get application documents (Candidate)
    */
   getDocuments: (id) => api.get(`/api/applications/candidate/${id}/documents`),
+
+  /**
+   * Get application documents (Recruiter)
+   */
+  getDocumentsRecruiter: (id) =>
+    api.get(`/api/applications/recruiter/${id}/documents`),
 };
 
 // ============================================

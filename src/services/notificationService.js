@@ -106,6 +106,7 @@ export class NotificationPoller {
     this.intervalId = null;
     this.listeners = new Set();
     this.unreadCount = 0;
+    this.isRefreshing = false; // Prevent concurrent refreshes
   }
 
   /**
@@ -191,9 +192,16 @@ export class NotificationPoller {
   }
 
   /**
-   * Manually refresh count
+   * Manually refresh count (optimized to prevent concurrent calls)
    */
   async refresh() {
+    // Prevent multiple simultaneous refresh calls
+    if (this.isRefreshing) {
+      return;
+    }
+
+    this.isRefreshing = true;
+
     try {
       const response = await NotificationService.getUnreadCount();
       const payload = response?.data || response || {};
@@ -202,10 +210,16 @@ export class NotificationPoller {
         payload.unread_count ||
         payload.unreadCount ||
         0;
-      this.unreadCount = newCount;
-      this.notifyListeners(newCount);
+
+      // Only notify if count changed
+      if (newCount !== this.unreadCount) {
+        this.unreadCount = newCount;
+        this.notifyListeners(newCount);
+      }
     } catch (error) {
       console.error("Failed to refresh notification count:", error);
+    } finally {
+      this.isRefreshing = false;
     }
   }
 }

@@ -1,171 +1,268 @@
-import React, { useState, useEffect, useRef } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { NotificationService, notificationPoller } from '../services/notificationService'
-import NotificationBadge from './NotificationBadge'
-import './NotificationDropdown.css'
+import React, { useState, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
+import {
+  NotificationService,
+  notificationPoller,
+} from "../services/notificationService";
+import NotificationBadge from "./NotificationBadge";
+import "./NotificationDropdown.css";
 
 function formatDate(dateString) {
-  if (!dateString) return '--'
+  if (!dateString) return "--";
   try {
-    const date = new Date(dateString)
-    const now = new Date()
-    const diffMs = now - date
-    const diffHours = diffMs / (1000 * 60 * 60)
-    const diffDays = diffMs / (1000 * 60 * 60 * 24)
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now - date;
+    const diffHours = diffMs / (1000 * 60 * 60);
+    const diffDays = diffMs / (1000 * 60 * 60 * 24);
 
     if (diffHours < 1) {
-      const diffMinutes = Math.floor(diffMs / (1000 * 60))
-      return diffMinutes <= 1 ? 'Vừa xong' : `${diffMinutes} phút trước`
+      const diffMinutes = Math.floor(diffMs / (1000 * 60));
+      return diffMinutes <= 1 ? "Vừa xong" : `${diffMinutes} phút trước`;
     } else if (diffHours < 24) {
-      return `${Math.floor(diffHours)} giờ trước`
+      return `${Math.floor(diffHours)} giờ trước`;
     } else if (diffDays < 7) {
-      return `${Math.floor(diffDays)} ngày trước`
+      return `${Math.floor(diffDays)} ngày trước`;
     } else {
-      return date.toLocaleDateString('vi-VN', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric'
-      })
+      return date.toLocaleDateString("vi-VN", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+      });
     }
   } catch {
-    return '--'
+    return "--";
   }
 }
 
 export default function NotificationDropdown({ isOpen, onToggle }) {
-  const navigate = useNavigate()
-  const dropdownRef = useRef(null)
-  const [notifications, setNotifications] = useState([])
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
-  const [pagination, setPagination] = useState({ page: 1, limit: 10, total: 0, total_pages: 1 })
+  const navigate = useNavigate();
+  const dropdownRef = useRef(null);
+  const [notifications, setNotifications] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [pagination, setPagination] = useState({
+    page: 1,
+    limit: 10,
+    total: 0,
+    total_pages: 1,
+  });
 
   // Load notifications when dropdown opens
   useEffect(() => {
     if (isOpen) {
-      loadNotifications()
+      loadNotifications();
     }
-  }, [isOpen])
+  }, [isOpen]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
-        onToggle(false)
+        onToggle(false);
       }
-    }
+    };
 
     if (isOpen) {
-      document.addEventListener('mousedown', handleClickOutside)
+      document.addEventListener("mousedown", handleClickOutside);
     }
 
     return () => {
-      document.removeEventListener('mousedown', handleClickOutside)
-    }
-  }, [isOpen, onToggle])
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [isOpen, onToggle]);
 
   const loadNotifications = async (page = 1) => {
-    setLoading(true)
-    setError('')
+    setLoading(true);
+    setError("");
     try {
       const response = await NotificationService.getNotifications({
         page,
-        limit: 10
-      })
+        limit: 10,
+      });
 
-      const data = response?.data || []
-      const pag = response?.pagination || { page: 1, limit: 10, total: data.length, total_pages: 1 }
+      const data = response?.data || [];
+      const pag = response?.pagination || {
+        page: 1,
+        limit: 10,
+        total: data.length,
+        total_pages: 1,
+      };
 
-      setNotifications(data)
-      setPagination(pag)
+      setNotifications(data);
+      setPagination(pag);
     } catch (err) {
-      setError(err?.message || 'Không thể tải thông báo')
-      setNotifications([])
+      setError(err?.message || "Không thể tải thông báo");
+      setNotifications([]);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   const handleMarkAsRead = async (notificationId, event) => {
-    event.stopPropagation()
+    event.stopPropagation();
     try {
-      await NotificationService.markAsRead(notificationId)
+      await NotificationService.markAsRead(notificationId);
       // Update local state
-      setNotifications(prev =>
-        prev.map(notif =>
+      setNotifications((prev) =>
+        prev.map((notif) =>
           notif.id === notificationId ? { ...notif, is_read: true } : notif
         )
-      )
+      );
       // Refresh global unread count so badge updates
-      notificationPoller.refresh().catch(() => {})
+      notificationPoller.refresh().catch(() => {});
     } catch (err) {
-      console.error('Failed to mark notification as read:', err)
+      console.error("Failed to mark notification as read:", err);
     }
-  }
+  };
 
   const handleMarkAllAsRead = async () => {
     try {
-      await NotificationService.markAllAsRead()
+      await NotificationService.markAllAsRead();
       // Update local state
-      setNotifications(prev => prev.map(notif => ({ ...notif, is_read: true })))
+      setNotifications((prev) =>
+        prev.map((notif) => ({ ...notif, is_read: true }))
+      );
       // Refresh global unread count
-      notificationPoller.refresh().catch(() => {})
+      notificationPoller.refresh().catch(() => {});
     } catch (err) {
-      console.error('Failed to mark all notifications as read:', err)
+      console.error("Failed to mark all notifications as read:", err);
     }
-  }
+  };
 
   const handleDelete = async (notificationId, event) => {
-    event.stopPropagation()
+    event.stopPropagation();
     try {
-      await NotificationService.deleteNotification(notificationId)
+      await NotificationService.deleteNotification(notificationId);
       // Remove from local state
-      setNotifications(prev => prev.filter(notif => notif.id !== notificationId))
+      setNotifications((prev) =>
+        prev.filter((notif) => notif.id !== notificationId)
+      );
       // Refresh global unread count
-      notificationPoller.refresh().catch(() => {})
+      notificationPoller.refresh().catch(() => {});
     } catch (err) {
-      console.error('Failed to delete notification:', err)
+      console.error("Failed to delete notification:", err);
     }
-  }
+  };
 
   const handleNotificationClick = (notification) => {
     // Mark as read if not already
     if (!notification.is_read) {
-      handleMarkAsRead(notification.id, { stopPropagation: () => {} })
+      handleMarkAsRead(notification.id, { stopPropagation: () => {} });
     }
 
-    // Navigate based on notification type or data
-    if (notification.data?.application_id) {
-      // For recruiter: navigate to application detail
-      const role = localStorage.getItem('user_role') || 'candidate'
-      if (role === 'recruiter') {
-        navigate(`/recruiter/applications/${notification.data.application_id}`)
-      } else {
-        // For candidate: navigate to their application detail
-        navigate(`/applications/${notification.data.application_id}`)
+    // Close dropdown before navigation
+    onToggle(false);
+
+    // Navigate using action_url from backend if available
+    if (notification.action_url) {
+      navigate(notification.action_url);
+      notificationPoller.refresh().catch(() => {});
+      return;
+    }
+
+    // Fallback: construct URL based on notification type and metadata
+    const url = constructNavigationUrl(notification);
+    if (url) {
+      navigate(url);
+    }
+
+    // Ensure global unread count updates after navigation
+    notificationPoller.refresh().catch(() => {});
+  };
+
+  const constructNavigationUrl = (notification) => {
+    const { type, data, metadata } = notification;
+    const meta = metadata || data || {};
+
+    // Get user role from localStorage
+    const userRole = localStorage.getItem("user_role") || "candidate";
+
+    // Application-related notifications
+    if (type?.includes("APPLICATION")) {
+      const applicationId = meta.application_id || meta.applicationId;
+      if (applicationId) {
+        if (userRole === "recruiter") {
+          return `/recruiter/applications/${applicationId}`;
+        }
+        return `/applications/${applicationId}`;
       }
     }
 
-    // Close dropdown
-    onToggle(false)
-    // Ensure global unread count updates after navigation
-    notificationPoller.refresh().catch(() => {})
-  }
+    // Job-related notifications
+    if (type?.includes("JOB")) {
+      const jobId = meta.job_id || meta.jobId;
+      if (jobId) {
+        if (userRole === "recruiter") {
+          return `/recruiter/jobs/${jobId}/manage`;
+        }
+        return `/jobs/${jobId}`;
+      }
+    }
+
+    // Interview-related notifications
+    if (type?.includes("INTERVIEW")) {
+      const applicationId = meta.application_id || meta.applicationId;
+      if (applicationId) {
+        if (userRole === "recruiter") {
+          return `/recruiter/applications/${applicationId}`;
+        }
+        return `/applications/${applicationId}`;
+      }
+    }
+
+    // Offer-related notifications
+    if (type?.includes("OFFER")) {
+      const applicationId = meta.application_id || meta.applicationId;
+      if (applicationId) {
+        if (userRole === "recruiter") {
+          return `/recruiter/applications/${applicationId}`;
+        }
+        return `/applications/${applicationId}`;
+      }
+    }
+
+    // Connection/Interest notifications
+    if (type?.includes("CONNECTION") || type?.includes("INTEREST")) {
+      const interestId = meta.interest_id || meta.interestId;
+      if (interestId) {
+        if (userRole === "recruiter") {
+          return `/recruiter/connections/${interestId}`;
+        }
+        return `/candidate/connections/${interestId}`;
+      }
+    }
+
+    // Stage-related notifications
+    if (type?.includes("STAGE")) {
+      const applicationId = meta.application_id || meta.applicationId;
+      if (applicationId) {
+        if (userRole === "recruiter") {
+          return `/recruiter/applications/${applicationId}`;
+        }
+        return `/applications/${applicationId}`;
+      }
+    }
+
+    // Default fallback based on role
+    if (userRole === "recruiter") {
+      return "/recruiter/dashboard";
+    }
+    return "/candidate/dashboard";
+  };
 
   const handleViewAll = () => {
     // TODO: Navigate to full notifications page
-    console.log('Navigate to full notifications page')
-    onToggle(false)
-  }
+    console.log("Navigate to full notifications page");
+    onToggle(false);
+  };
 
-  const unreadCount = notifications.filter(n => !n.is_read).length
+  const unreadCount = notifications.filter((n) => !n.is_read).length;
 
   return (
     <div className="notification-dropdown-container" ref={dropdownRef}>
       <NotificationBadge onClick={() => onToggle(!isOpen)}>
-        <button className="notification-button">
-          🔔
-        </button>
+        <button className="notification-button">🔔</button>
       </NotificationBadge>
 
       {isOpen && (
@@ -183,11 +280,7 @@ export default function NotificationDropdown({ isOpen, onToggle }) {
           </div>
 
           <div className="notification-list">
-            {loading && (
-              <div className="notification-loading">
-                Đang tải...
-              </div>
-            )}
+            {loading && <div className="notification-loading">Đang tải...</div>}
 
             {error && (
               <div className="notification-error">
@@ -207,7 +300,9 @@ export default function NotificationDropdown({ isOpen, onToggle }) {
                 {notifications.map((notification) => (
                   <div
                     key={notification.id}
-                    className={`notification-item ${!notification.is_read ? 'unread' : ''}`}
+                    className={`notification-item ${
+                      !notification.is_read ? "unread" : ""
+                    }`}
                     onClick={() => handleNotificationClick(notification)}
                   >
                     <div className="notification-content">
@@ -270,5 +365,5 @@ export default function NotificationDropdown({ isOpen, onToggle }) {
         </div>
       )}
     </div>
-  )
+  );
 }
