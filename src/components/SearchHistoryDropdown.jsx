@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { searchHistoryUtils } from "../utils/searchHistory.js";
 import "./SearchHistoryDropdown.css";
 
@@ -15,8 +15,31 @@ const SearchHistoryDropdown = React.forwardRef(function SearchHistoryDropdown(
   },
   ref
 ) {
-  // Use backend data if available, otherwise fallback to localStorage
-  const history = backendHistory?.history || searchHistoryUtils.getHistory();
+  // Add state to track localStorage history changes
+  const [localHistory, setLocalHistory] = useState(() =>
+    searchHistoryUtils.getHistory()
+  );
+
+  // Listen for history changes
+  useEffect(() => {
+    if (!backendHistory) {
+      const handleHistoryChange = () => {
+        setLocalHistory(searchHistoryUtils.getHistory());
+      };
+
+      window.addEventListener("search-history-changed", handleHistoryChange);
+
+      return () => {
+        window.removeEventListener(
+          "search-history-changed",
+          handleHistoryChange
+        );
+      };
+    }
+  }, [backendHistory]);
+
+  // Use backend data if available, otherwise fallback to localStorage state
+  const history = backendHistory?.history || localHistory;
   const recentSearches =
     backendHistory?.history?.slice(0, 3) ||
     searchHistoryUtils.getRecentSearches();
