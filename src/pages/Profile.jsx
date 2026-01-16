@@ -901,10 +901,8 @@ export default function Profile() {
           },
           {
             name: "proficiency",
-            label: "Điểm thành thạo (1-5)",
+            label: "Điểm thành thạo",
             type: "number",
-            min: 1,
-            max: 5,
           },
         ],
         initialValues: {
@@ -920,10 +918,15 @@ export default function Profile() {
           category: item?.skills?.category || "",
           level: item?.level || "",
           proficiency: item?.proficiency ?? "",
+          _isExisting: true, // Flag để biết đây là edit mode
         }),
         toPayload: (values) => {
           const payload = {};
-          if (values.skill_id) payload.skill_id = values.skill_id;
+          // Chỉ gửi skill_id khi CREATE (không có flag _isExisting)
+          if (!values._isExisting && values.skill_id) {
+            payload.skill_id = values.skill_id;
+          }
+          // UPDATE chỉ gửi level và proficiency
           if (values.level) payload.level = values.level;
           if (values.proficiency !== undefined && values.proficiency !== "")
             payload.proficiency = Number(values.proficiency);
@@ -2110,6 +2113,15 @@ export default function Profile() {
                         fetchSkillsForCategory(val);
                       }}
                       required
+                      disabled={entityModal.mode === "edit"}
+                      style={
+                        entityModal.mode === "edit"
+                          ? {
+                              backgroundColor: "#f5f5f5",
+                              cursor: "not-allowed",
+                            }
+                          : {}
+                      }
                     >
                       <option value="">Chọn danh mục...</option>
                       {skillCategories.map((cat, i) => (
@@ -2118,91 +2130,123 @@ export default function Profile() {
                         </option>
                       ))}
                     </select>
+                    {entityModal.mode === "edit" && (
+                      <small
+                        className="muted"
+                        style={{ display: "block", marginTop: "4px" }}
+                      >
+                        Không thể thay đổi kỹ năng khi chỉnh sửa. Vui lòng xóa
+                        và tạo mới nếu muốn thay đổi.
+                      </small>
+                    )}
                   </label>
 
                   <label className="entity-field">
                     <span>Kỹ năng</span>
-                    <div style={{ position: "relative" }}>
+                    {entityModal.mode === "edit" ? (
                       <input
                         type="text"
-                        value={skillSearch || entityForm.skill_name || ""}
-                        onChange={(e) => {
-                          const q = e.target.value;
-                          setSkillSearch(q);
-                          setShowSkillDropdown(true);
-                          if (!q.trim()) {
-                            setAvailableSkills(initialAvailableSkills);
-                          } else {
-                            setAvailableSkills(
-                              initialAvailableSkills.filter((s) =>
-                                s.name.toLowerCase().includes(q.toLowerCase())
-                              )
-                            );
-                          }
+                        value={entityForm.skill_name || ""}
+                        disabled
+                        style={{
+                          backgroundColor: "#f5f5f5",
+                          cursor: "not-allowed",
                         }}
-                        onFocus={() => {
-                          if (!entityForm.category) return;
-                          setShowSkillDropdown(true);
-                          if (
-                            !skillSearch.trim() &&
-                            initialAvailableSkills.length > 0
-                          ) {
-                            setAvailableSkills(initialAvailableSkills);
-                          }
-                        }}
-                        onBlur={() =>
-                          setTimeout(() => setShowSkillDropdown(false), 150)
-                        }
-                        placeholder={
-                          loadingSkills
-                            ? "Đang tải..."
-                            : !entityForm.category
-                            ? "Chọn danh mục trước"
-                            : "Tìm hoặc chọn kỹ năng..."
-                        }
-                        disabled={!entityForm.category || loadingSkills}
-                        required
                       />
-                      {showSkillDropdown &&
-                        entityForm.category &&
-                        !loadingSkills &&
-                        availableSkills.length > 0 && (
-                          <div
-                            className="autocomplete-dropdown"
-                            style={{ position: "absolute", zIndex: 30 }}
-                            onMouseDown={(e) => e.preventDefault()}
-                          >
-                            {availableSkills.map((s) => (
-                              <div
-                                key={s.id}
-                                className="autocomplete-item"
-                                onMouseDown={(e) => {
-                                  e.preventDefault();
-                                  setEntityForm((prev) => ({
-                                    ...prev,
-                                    skill_id: s.id,
-                                    skill_name: s.name,
-                                  }));
-                                  setSkillSearch(s.name);
-                                  setShowSkillDropdown(false);
-                                }}
-                              >
-                                {s.name}
-                                {s.category ? ` (${s.category})` : ""}
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                    </div>
+                    ) : (
+                      <div style={{ position: "relative" }}>
+                        <input
+                          type="text"
+                          value={skillSearch || entityForm.skill_name || ""}
+                          onChange={(e) => {
+                            const q = e.target.value;
+                            setSkillSearch(q);
+                            setShowSkillDropdown(true);
+                            if (!q.trim()) {
+                              setAvailableSkills(initialAvailableSkills);
+                            } else {
+                              setAvailableSkills(
+                                initialAvailableSkills.filter((s) =>
+                                  s.name.toLowerCase().includes(q.toLowerCase())
+                                )
+                              );
+                            }
+                          }}
+                          onFocus={() => {
+                            if (!entityForm.category) return;
+                            setShowSkillDropdown(true);
+                            if (
+                              !skillSearch.trim() &&
+                              initialAvailableSkills.length > 0
+                            ) {
+                              setAvailableSkills(initialAvailableSkills);
+                            }
+                          }}
+                          onBlur={() =>
+                            setTimeout(() => setShowSkillDropdown(false), 150)
+                          }
+                          placeholder={
+                            loadingSkills
+                              ? "Đang tải..."
+                              : !entityForm.category
+                              ? "Chọn danh mục trước"
+                              : "Tìm hoặc chọn kỹ năng..."
+                          }
+                          disabled={!entityForm.category || loadingSkills}
+                          required
+                        />
+                        {showSkillDropdown &&
+                          entityForm.category &&
+                          !loadingSkills &&
+                          availableSkills.length > 0 && (
+                            <div
+                              className="autocomplete-dropdown"
+                              style={{
+                                position: "absolute",
+                                zIndex: 99999,
+                                top: "100%",
+                                left: 0,
+                                right: 0,
+                                maxHeight: "200px",
+                                overflow: "auto",
+                                backgroundColor: "white",
+                                border: "1px solid #ddd",
+                                borderRadius: "4px",
+                                boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
+                                marginTop: "4px",
+                              }}
+                              onMouseDown={(e) => e.preventDefault()}
+                            >
+                              {availableSkills.map((s) => (
+                                <div
+                                  key={s.id}
+                                  className="autocomplete-item"
+                                  onMouseDown={(e) => {
+                                    e.preventDefault();
+                                    setEntityForm((prev) => ({
+                                      ...prev,
+                                      skill_id: s.id,
+                                      skill_name: s.name,
+                                    }));
+                                    setSkillSearch(s.name);
+                                    setShowSkillDropdown(false);
+                                  }}
+                                >
+                                  {s.name}
+                                  {s.category ? ` (${s.category})` : ""}
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                      </div>
+                    )}
                   </label>
 
                   <label className="entity-field">
-                    <span>Độ thành thạo (1-5)</span>
+                    <span>Độ thành thạo *</span>
                     <input
                       type="number"
                       name="proficiency"
-                      min="1"
-                      max="5"
                       value={entityForm.proficiency ?? ""}
                       onChange={(e) =>
                         setEntityForm((prev) => ({
@@ -2214,7 +2258,9 @@ export default function Profile() {
                       }
                       required
                     />
-                    <small className="muted">1 (thấp) - 5 (cao)</small>
+                    <small className="muted">
+                      Nhập điểm số đánh giá độ thành thạo
+                    </small>
                   </label>
 
                   <label className="entity-field">

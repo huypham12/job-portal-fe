@@ -67,6 +67,26 @@ export default function SearchPage() {
   const [searchHistory, setSearchHistory] = React.useState(null);
   const [searchHistoryLoading, setSearchHistoryLoading] = React.useState(false);
 
+  // Function to fetch search history (reusable)
+  const fetchSearchHistory = useCallback(async () => {
+    const token = localStorage.getItem("authToken");
+    if (!token || !token.trim()) {
+      setSearchHistoryLoading(false);
+      return;
+    }
+
+    try {
+      setSearchHistoryLoading(true);
+      const response = await searchService.getSearchHistory({ limit: 10 });
+      setSearchHistory(response);
+    } catch (error) {
+      console.warn("Failed to fetch search history:", error);
+      setSearchHistory(null);
+    } finally {
+      setSearchHistoryLoading(false);
+    }
+  }, []);
+
   // Lấy user context từ search state hoặc localStorage
   const getUserContext = useCallback(() => {
     // Từ search state (nếu user đã set preferences)
@@ -100,38 +120,39 @@ export default function SearchPage() {
 
   const userContext = getUserContext();
 
-  // Fetch search history from backend
+  // Fetch search history on mount
   React.useEffect(() => {
-    const fetchSearchHistory = async () => {
-      try {
-        setSearchHistoryLoading(true);
-        const response = await searchService.getSearchHistory({ limit: 10 });
-        setSearchHistory(response);
-      } catch (error) {
-        console.warn("Failed to fetch search history:", error);
-        // Keep searchHistory as null to fallback to localStorage
-      } finally {
-        setSearchHistoryLoading(false);
-      }
+    fetchSearchHistory();
+  }, [fetchSearchHistory]);
+
+  // Listen for search history updates (triggered after search completes)
+  React.useEffect(() => {
+    const handleHistoryUpdate = () => {
+      // Delay để đợi backend lưu xong
+      setTimeout(() => {
+        fetchSearchHistory();
+      }, 300);
     };
 
-    // Only fetch if user is authenticated (has userContext with userLocation)
-    if (userContext.userLocation) {
-      fetchSearchHistory();
-    }
-  }, [userContext.userLocation]);
+    window.addEventListener("search-history-updated", handleHistoryUpdate);
+    return () => {
+      window.removeEventListener("search-history-updated", handleHistoryUpdate);
+    };
+  }, [fetchSearchHistory]);
 
   // Handle removing search history entry
-  const handleRemoveHistoryEntry = useCallback(async (historyId) => {
-    try {
-      await searchService.deleteSearchHistoryEntry(historyId);
-      // Refresh search history
-      const response = await searchService.getSearchHistory({ limit: 10 });
-      setSearchHistory(response);
-    } catch (error) {
-      console.error("Failed to delete search history entry:", error);
-    }
-  }, []);
+  const handleRemoveHistoryEntry = useCallback(
+    async (historyId) => {
+      try {
+        await searchService.deleteSearchHistoryEntry(historyId);
+        // Refresh search history
+        fetchSearchHistory();
+      } catch (error) {
+        console.error("Failed to delete search history entry:", error);
+      }
+    },
+    [fetchSearchHistory]
+  );
 
   // Handle clearing all search history
   const handleClearAllHistory = useCallback(async () => {

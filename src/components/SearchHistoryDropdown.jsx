@@ -2,16 +2,19 @@ import React from "react";
 import { searchHistoryUtils } from "../utils/searchHistory.js";
 import "./SearchHistoryDropdown.css";
 
-export default function SearchHistoryDropdown({
-  onSelect,
-  onClose,
-  query = "",
-  // New props for backend integration
-  backendHistory = null, // { history: [], pagination: {} }
-  onRemoveHistoryEntry = null, // callback for removing backend history
-  onClearAllHistory = null, // callback for clearing all backend history
-  isLoading = false,
-}) {
+const SearchHistoryDropdown = React.forwardRef(function SearchHistoryDropdown(
+  {
+    onSelect,
+    onClose,
+    query = "",
+    // New props for backend integration
+    backendHistory = null, // { history: [], pagination: {} }
+    onRemoveHistoryEntry = null, // callback for removing backend history
+    onClearAllHistory = null, // callback for clearing all backend history
+    isLoading = false,
+  },
+  ref
+) {
   // Use backend data if available, otherwise fallback to localStorage
   const history = backendHistory?.history || searchHistoryUtils.getHistory();
   const recentSearches =
@@ -54,8 +57,8 @@ export default function SearchHistoryDropdown({
       // Backend data structure
       return {
         id: item.id,
-        term: item.query,
-        timestamp: new Date(item.searched_at),
+        term: item.term,
+        timestamp: new Date(item.timestamp),
         isRecent: false,
         resultCount: item.result_count,
         filters: item.filters,
@@ -197,4 +200,6 @@ export default function SearchHistoryDropdown({
       )}
     </div>
   );
-}
+});
+
+export default SearchHistoryDropdown;

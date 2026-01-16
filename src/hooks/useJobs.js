@@ -712,6 +712,46 @@ export function useJobsSearch(initialFilters = {}) {
         cache_hit: response.cache_hit,
         cached_at: response.cached_at,
       });
+
+      // Log search event to backend for search history (only if user is authenticated and has query)
+      if (state.q && state.q.trim()) {
+        try {
+          const token = localStorage.getItem("authToken");
+          if (token) {
+            // Get user_id from auth helper
+            const { getCurrentUserId } = await import("../auth/auth.js");
+            const userId = getCurrentUserId();
+
+            await searchService.logEvent({
+              event_type: "search",
+              user_id: userId, // IMPORTANT: Backend needs this to save to search_history
+              query: state.q,
+              filters: {
+                location: state.location,
+                locationId: state.locationId,
+                jobType: state.jobType,
+                experienceLevel: state.experienceLevel,
+                skills: state.skills,
+                salaryMin: state.salaryMin,
+                salaryMax: state.salaryMax,
+                remotePercentageMin: state.remotePercentageMin,
+                flexibleHours: state.flexibleHours,
+              },
+              result_count: response.total || 0,
+              timestamp_ms: Date.now(),
+            });
+            console.log(
+              "✅ [Search] Logged search event to backend with user_id:",
+              userId
+            );
+
+            // Trigger event để SearchPage biết cần refetch history
+            window.dispatchEvent(new CustomEvent("search-history-updated"));
+          }
+        } catch (err) {
+          console.warn("Failed to log search event:", err);
+        }
+      }
     } catch (err) {
       console.error("Search failed:", err);
       setError(err.message || "Có lỗi xảy ra khi tìm kiếm");

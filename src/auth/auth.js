@@ -13,6 +13,10 @@ export function logout() {
   localStorage.removeItem("authUser");
   localStorage.removeItem("authToken");
   localStorage.removeItem("refreshToken");
+
+  // Clear search history to prevent privacy leak between users
+  localStorage.removeItem("jobfinder_search_history");
+
   emitAuthChanged();
 }
 
