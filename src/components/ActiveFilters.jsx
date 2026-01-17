@@ -79,29 +79,6 @@ export default function ActiveFilters({ filters, onRemoveFilter, className = '' 
     })
   }
 
-  // Job categories
-  if (filters.jobCategories && filters.jobCategories.length > 0) {
-    filters.jobCategories.forEach((category, index) => {
-      activeFilters.push({
-        key: `category-${index}`,
-        label: `Danh mục: ${category}`,
-        value: 'jobCategories',
-        categoryValue: category
-      })
-    })
-  }
-
-  // Job benefits
-  if (filters.jobBenefits && filters.jobBenefits.length > 0) {
-    filters.jobBenefits.forEach((benefit, index) => {
-      activeFilters.push({
-        key: `benefit-${index}`,
-        label: `Phúc lợi: ${benefit}`,
-        value: 'jobBenefits',
-        benefitValue: benefit
-      })
-    })
-  }
 
   // Remote percentage
   if (filters.remotePercentageMin !== null && filters.remotePercentageMin !== undefined) {
@@ -139,14 +116,6 @@ export default function ActiveFilters({ filters, onRemoveFilter, className = '' 
       // Remove specific skill from array
       const newSkills = filters.skills.filter(skill => skill !== filter.skillValue)
       onRemoveFilter('skills', newSkills)
-    } else if (filter.value === 'jobCategories') {
-      // Remove specific category from array
-      const newCategories = filters.jobCategories.filter(cat => cat !== filter.categoryValue)
-      onRemoveFilter('jobCategories', newCategories)
-    } else if (filter.value === 'jobBenefits') {
-      // Remove specific benefit from array
-      const newBenefits = filters.jobBenefits.filter(benefit => benefit !== filter.benefitValue)
-      onRemoveFilter('jobBenefits', newBenefits)
     } else if (filter.value === 'salary') {
       // Clear both salary min and max
       onRemoveFilter('salaryMin', null)

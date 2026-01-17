@@ -1,153 +1,181 @@
-import { useState, useEffect, useCallback } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { adminApi } from '../../services/adminApi'
-import './styles/admin-users.css'
+import { useState, useEffect, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
+import { adminApi } from "../../services/adminApi";
 
-const PAGE_SIZE = 20
+const PAGE_SIZE = 20;
 const ROLE_OPTIONS = [
-  { value: '', label: 'Tất cả' },
-  { value: 'candidate', label: 'Ứng viên' },
-  { value: 'recruiter', label: 'Nhà tuyển dụng' },
-  { value: 'admin', label: 'Quản trị viên' },
-]
+  { value: "", label: "Tất cả" },
+  { value: "candidate", label: "Ứng viên" },
+  { value: "recruiter", label: "Nhà tuyển dụng" },
+  { value: "admin", label: "Quản trị viên" },
+];
 
 const VERIFIED_OPTIONS = [
-  { value: '', label: 'Tất cả' },
-  { value: 'true', label: 'Đã xác thực' },
-  { value: 'false', label: 'Chưa xác thực' },
-]
+  { value: "", label: "Tất cả" },
+  { value: "true", label: "Đã xác thực" },
+  { value: "false", label: "Chưa xác thực" },
+];
 
 const DELETED_OPTIONS = [
-  { value: '', label: 'Tất cả' },
-  { value: 'false', label: 'Hoạt động' },
-  { value: 'true', label: 'Đã khóa' },
-]
+  { value: "", label: "Tất cả" },
+  { value: "false", label: "Hoạt động" },
+  { value: "true", label: "Đã khóa" },
+];
 
 function formatDate(dateString) {
-  if (!dateString) return '--'
+  if (!dateString) return "--";
   try {
-    const date = new Date(dateString)
-    return date.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })
+    const date = new Date(dateString);
+    return date.toLocaleDateString("vi-VN", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    });
   } catch {
-    return '--'
+    return "--";
   }
 }
 
 export default function AdminUsersList() {
-  const navigate = useNavigate()
-  const [users, setUsers] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
-  const [currentPage, setCurrentPage] = useState(1)
-  const [pagination, setPagination] = useState({ page: 1, limit: PAGE_SIZE, total: 0, totalPages: 1 })
-  
+  const navigate = useNavigate();
+  const [users, setUsers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pagination, setPagination] = useState({
+    page: 1,
+    limit: PAGE_SIZE,
+    total: 0,
+    totalPages: 1,
+  });
+
   const [filters, setFilters] = useState({
-    search: '',
-    role: '',
-    verified: '',
-    deleted: '',
-  })
+    search: "",
+    role: "",
+    verified: "",
+    deleted: "",
+  });
 
   const fetchUsers = useCallback(async () => {
-    setLoading(true)
-    setError(null)
+    setLoading(true);
+    setError(null);
     try {
+      // Normalize filter values: convert empty strings to undefined so adminApi omits them
+      const normalizedVerified =
+        filters.verified === "" ? undefined : filters.verified;
+      const normalizedDeleted =
+        filters.deleted === "" ? undefined : filters.deleted;
+      const normalizedRole = filters.role === "" ? undefined : filters.role;
+      const normalizedSearch =
+        filters.search && filters.search.trim()
+          ? filters.search.trim()
+          : undefined;
+
       const params = {
         page: currentPage,
         limit: PAGE_SIZE,
-        ...(filters.search && filters.search.trim() && { search: filters.search.trim() }),
-        ...(filters.role && filters.role !== '' && { role: filters.role }),
-        // Chỉ gửi verified nếu có giá trị (không phải empty string)
-        ...(filters.verified && filters.verified !== '' && { verified: filters.verified }),
-        // Chỉ gửi deleted nếu có giá trị (không phải empty string)
-        ...(filters.deleted && filters.deleted !== '' && { deleted: filters.deleted }),
-      }
-      
-      console.log('Fetching users with params:', params)
-      console.log('Filters state:', filters)
-      const response = await adminApi.getAllUsers(params)
-      console.log('API Response:', response)
-      console.log('API Response type:', typeof response)
-      console.log('API Response keys:', Object.keys(response || {}))
-      
+        ...(normalizedSearch ? { search: normalizedSearch } : {}),
+        ...(normalizedRole ? { role: normalizedRole } : {}),
+        ...(normalizedVerified !== undefined
+          ? { verified: normalizedVerified }
+          : {}),
+        ...(normalizedDeleted !== undefined
+          ? { deleted: normalizedDeleted }
+          : {}),
+      };
+
+      console.log("Fetching users with params:", params);
+      console.log("Filters state:", filters);
+      const response = await adminApi.getAllUsers(params);
+      console.log("API Response:", response);
+      console.log("API Response type:", typeof response);
+      console.log("API Response keys:", Object.keys(response || {}));
+
       // Xử lý nhiều format response khác nhau
-      let data = {}
+      let data = {};
       if (response?.data) {
-        data = response.data
+        data = response.data;
       } else if (response?.users) {
         // Nếu response trực tiếp có users
-        data = response
+        data = response;
       } else if (Array.isArray(response)) {
         // Nếu response là array trực tiếp
-        data = { users: response, pagination: { total: response.length } }
+        data = { users: response, pagination: { total: response.length } };
       } else {
-        data = response || {}
+        data = response || {};
       }
-      
-      console.log('Processed data:', data)
-      
-      const usersList = data.users || data.data?.users || []
-      const paginationData = data.pagination || data.data?.pagination || {}
-      
-      console.log('Users list:', usersList)
-      console.log('Pagination:', paginationData)
-      
-      setUsers(usersList)
+
+      console.log("Processed data:", data);
+
+      const usersList = data.users || data.data?.users || [];
+      const paginationData = data.pagination || data.data?.pagination || {};
+
+      console.log("Users list:", usersList);
+      console.log("Pagination:", paginationData);
+
+      setUsers(usersList);
       setPagination({
         page: paginationData.page || currentPage,
         limit: paginationData.limit || PAGE_SIZE,
         total: paginationData.total || 0,
-        totalPages: paginationData.totalPages || Math.ceil((paginationData.total || 0) / PAGE_SIZE) || 1,
-      })
+        totalPages:
+          paginationData.totalPages ||
+          Math.ceil((paginationData.total || 0) / PAGE_SIZE) ||
+          1,
+      });
     } catch (err) {
-      console.error('Failed to fetch users:', err)
-      console.error('Error details:', {
+      console.error("Failed to fetch users:", err);
+      console.error("Error details:", {
         message: err?.message,
         status: err?.status,
-        data: err?.data
-      })
-      setError(err?.data?.message || err?.message || 'Không thể tải danh sách người dùng. Vui lòng thử lại.')
+        data: err?.data,
+      });
+      setError(
+        err?.data?.message ||
+          err?.message ||
+          "Không thể tải danh sách người dùng. Vui lòng thử lại."
+      );
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }, [currentPage, filters])
+  }, [currentPage, filters]);
 
   useEffect(() => {
-    fetchUsers()
-  }, [fetchUsers])
+    fetchUsers();
+  }, [fetchUsers]);
 
   const handleFilterChange = (key, value) => {
-    setFilters(prev => ({ ...prev, [key]: value }))
-    setCurrentPage(1)
-  }
+    setFilters((prev) => ({ ...prev, [key]: value }));
+    setCurrentPage(1);
+  };
 
   const handleSearch = (e) => {
-    e.preventDefault()
-    setCurrentPage(1)
-    fetchUsers()
-  }
+    e.preventDefault();
+    setCurrentPage(1);
+    fetchUsers();
+  };
 
   const handleViewDetail = (userId) => {
-    navigate(`/admin/users/${userId}`)
-  }
+    navigate(`/admin/users/${userId}`);
+  };
 
   const getRoleLabel = (role) => {
     const labels = {
-      candidate: 'Ứng viên',
-      recruiter: 'Nhà tuyển dụng',
-      admin: 'Quản trị viên',
-    }
-    return labels[role] || role
-  }
+      candidate: "Ứng viên",
+      recruiter: "Nhà tuyển dụng",
+      admin: "Quản trị viên",
+    };
+    return labels[role] || role;
+  };
 
   const getRoleColor = (role) => {
     const colors = {
-      candidate: '#3b82f6',
-      recruiter: '#10b981',
-      admin: '#dc2626',
-    }
-    return colors[role] || '#64748b'
-  }
+      candidate: "#3b82f6",
+      recruiter: "#10b981",
+      admin: "#dc2626",
+    };
+    return colors[role] || "#64748b";
+  };
 
   return (
     <div className="admin-users-list">
@@ -159,48 +187,56 @@ export default function AdminUsersList() {
       <div className="admin-card">
         <div className="admin-filters">
           <form onSubmit={handleSearch} className="admin-search-form">
-          <input
-            type="text"
-            placeholder="Tìm kiếm theo email hoặc tên..."
+            <input
+              type="text"
+              placeholder="Tìm kiếm theo email hoặc tên..."
               value={filters.search}
-            onChange={(e) => handleFilterChange('search', e.target.value)}
+              onChange={(e) => handleFilterChange("search", e.target.value)}
               className="admin-search-input"
-          />
-            <button type="submit" className="admin-search-btn">Tìm kiếm</button>
+            />
+            <button type="submit" className="admin-search-btn">
+              Tìm kiếm
+            </button>
           </form>
 
           <div className="admin-filter-row">
-          <select
+            <select
               value={filters.role}
-            onChange={(e) => handleFilterChange('role', e.target.value)}
+              onChange={(e) => handleFilterChange("role", e.target.value)}
               className="admin-filter-select"
-          >
-            {ROLE_OPTIONS.map(opt => (
-              <option key={opt.value} value={opt.value}>{opt.label}</option>
-            ))}
-          </select>
+            >
+              {ROLE_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
 
-          <select
+            <select
               value={filters.verified}
-            onChange={(e) => handleFilterChange('verified', e.target.value)}
+              onChange={(e) => handleFilterChange("verified", e.target.value)}
               className="admin-filter-select"
-          >
-              {VERIFIED_OPTIONS.map(opt => (
-                <option key={opt.value} value={opt.value}>{opt.label}</option>
+            >
+              {VERIFIED_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
               ))}
-          </select>
+            </select>
 
-          <select
+            <select
               value={filters.deleted}
-            onChange={(e) => handleFilterChange('deleted', e.target.value)}
+              onChange={(e) => handleFilterChange("deleted", e.target.value)}
               className="admin-filter-select"
-          >
-              {DELETED_OPTIONS.map(opt => (
-                <option key={opt.value} value={opt.value}>{opt.label}</option>
+            >
+              {DELETED_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
               ))}
-          </select>
+            </select>
+          </div>
         </div>
-      </div>
       </div>
 
       {loading && (
@@ -212,7 +248,10 @@ export default function AdminUsersList() {
       {error && (
         <div className="admin-card admin-error-state">
           <p>{error}</p>
-          <button className="admin-btn admin-btn-secondary" onClick={fetchUsers}>
+          <button
+            className="admin-btn admin-btn-secondary"
+            onClick={fetchUsers}
+          >
             Thử lại
           </button>
         </div>
@@ -221,10 +260,14 @@ export default function AdminUsersList() {
       {!loading && !error && (
         <>
           {pagination.total > 0 && (
-            <div className="admin-card" style={{ padding: '12px 24px', background: '#f8fafc' }}>
-              <p style={{ margin: 0, fontSize: '14px', color: '#64748b' }}>
+            <div
+              className="admin-card"
+              style={{ padding: "12px 24px", background: "#f8fafc" }}
+            >
+              <p style={{ margin: 0, fontSize: "14px", color: "#64748b" }}>
                 Tìm thấy <strong>{pagination.total}</strong> người dùng
-                {pagination.totalPages > 1 && ` (Trang ${currentPage}/${pagination.totalPages})`}
+                {pagination.totalPages > 1 &&
+                  ` (Trang ${currentPage}/${pagination.totalPages})`}
               </p>
             </div>
           )}
@@ -247,27 +290,45 @@ export default function AdminUsersList() {
                     <tr>
                       <td colSpan="7" className="admin-empty-state">
                         {pagination.total === 0 ? (
-                          <div style={{ textAlign: 'center', padding: '20px' }}>
-                            <p style={{ margin: '0 0 8px 0', fontSize: '16px', fontWeight: 600, color: '#0f172a' }}>
+                          <div style={{ textAlign: "center", padding: "20px" }}>
+                            <p
+                              style={{
+                                margin: "0 0 8px 0",
+                                fontSize: "16px",
+                                fontWeight: 600,
+                                color: "#0f172a",
+                              }}
+                            >
                               Chưa có người dùng nào trong hệ thống
                             </p>
-                            <p style={{ margin: 0, fontSize: '14px', color: '#64748b' }}>
-                              {filters.search || filters.role || filters.verified || filters.deleted
-                                ? 'Không tìm thấy người dùng phù hợp với bộ lọc. Vui lòng thử lại với bộ lọc khác.'
-                                : 'Database chưa có dữ liệu. Vui lòng chạy seed data để tạo dữ liệu mẫu.'}
+                            <p
+                              style={{
+                                margin: 0,
+                                fontSize: "14px",
+                                color: "#64748b",
+                              }}
+                            >
+                              {filters.search ||
+                              filters.role ||
+                              filters.verified ||
+                              filters.deleted
+                                ? "Không tìm thấy người dùng phù hợp với bộ lọc. Vui lòng thử lại với bộ lọc khác."
+                                : "Database chưa có dữ liệu. Vui lòng chạy seed data để tạo dữ liệu mẫu."}
                             </p>
-        </div>
-      ) : (
-                          'Đang tải dữ liệu...'
+                          </div>
+                        ) : (
+                          "Đang tải dữ liệu..."
                         )}
                       </td>
                     </tr>
                   ) : (
                     users.map((user) => {
-                // profiles có thể là object (một-một) hoặc array (một-nhiều)
-                const profile = Array.isArray(user.profiles) ? user.profiles[0] : (user.profiles || {})
-                      const name = profile.full_name || '--'
-                return (
+                      // profiles có thể là object (một-một) hoặc array (một-nhiều)
+                      const profile = Array.isArray(user.profiles)
+                        ? user.profiles[0]
+                        : user.profiles || {};
+                      const name = profile.full_name || "--";
+                      return (
                         <tr key={user.id}>
                           <td>{user.email}</td>
                           <td>{name}</td>
@@ -284,29 +345,37 @@ export default function AdminUsersList() {
                           </td>
                           <td>
                             <span
-                              className={`admin-badge ${user.verified ? 'admin-badge-success' : 'admin-badge-warning'}`}
+                              className={`admin-badge ${
+                                user.verified
+                                  ? "admin-badge-success"
+                                  : "admin-badge-warning"
+                              }`}
                             >
-                              {user.verified ? 'Đã xác thực' : 'Chưa xác thực'}
-                      </span>
+                              {user.verified ? "Đã xác thực" : "Chưa xác thực"}
+                            </span>
                           </td>
                           <td>
                             <span
-                              className={`admin-badge ${user.deleted ? 'admin-badge-danger' : 'admin-badge-success'}`}
+                              className={`admin-badge ${
+                                user.deleted
+                                  ? "admin-badge-danger"
+                                  : "admin-badge-success"
+                              }`}
                             >
-                              {user.deleted ? 'Đã khóa' : 'Hoạt động'}
+                              {user.deleted ? "Đã khóa" : "Hoạt động"}
                             </span>
                           </td>
                           <td>{formatDate(user.created_at)}</td>
                           <td>
-                      <button
+                            <button
                               className="admin-btn admin-btn-link"
                               onClick={() => handleViewDetail(user.id)}
-                      >
+                            >
                               Xem chi tiết
-                      </button>
+                            </button>
                           </td>
                         </tr>
-                )
+                      );
                     })
                   )}
                 </tbody>
@@ -318,17 +387,20 @@ export default function AdminUsersList() {
             <div className="admin-pagination">
               <button
                 className="admin-btn admin-btn-secondary"
-                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                 disabled={currentPage === 1}
               >
                 Trước
               </button>
               <span className="admin-pagination-info">
-                Trang {currentPage} / {pagination.totalPages} ({pagination.total} người dùng)
+                Trang {currentPage} / {pagination.totalPages} (
+                {pagination.total} người dùng)
               </span>
               <button
                 className="admin-btn admin-btn-secondary"
-                onClick={() => setCurrentPage(p => Math.min(pagination.totalPages, p + 1))}
+                onClick={() =>
+                  setCurrentPage((p) => Math.min(pagination.totalPages, p + 1))
+                }
                 disabled={currentPage === pagination.totalPages}
               >
                 Sau
@@ -338,5 +410,5 @@ export default function AdminUsersList() {
         </>
       )}
     </div>
-  )
+  );
 }

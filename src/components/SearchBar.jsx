@@ -9,10 +9,18 @@ import './SearchBar.css'
 export default function SearchBar({
   value = '',
   onChange,
+  onSelectPayload, // optional callback to pass suggestion.payload to parent
   placeholder = 'Tìm kiếm...',
   loading = false,
   showSuggestions = true,
-  className = ''
+  className = '',
+  userContext = {}, // { userLocation, userExperienceLevel, userSkills }
+  onClear, // optional callback to clear all search content
+  // New props for backend search history integration
+  backendHistory = null,
+  onRemoveHistoryEntry = null,
+  onClearAllHistory = null,
+  searchHistoryLoading = false
 }) {
   const [inputValue, setInputValue] = useState(value)
   const [suggestions, setSuggestions] = useState([])
@@ -26,6 +34,7 @@ export default function SearchBar({
   const inputRef = useRef(null)
   const dropdownRef = useRef(null)
   const historyRef = useRef(null)
+  const searchBarRef = useRef(null)
 
   // Sync internal state with external value
   useEffect(() => {
@@ -51,7 +60,11 @@ export default function SearchBar({
       try {
         const response = await searchService.getSuggestions({
           q: query,
-          size: 8
+          size: 8,
+          // Thêm user context từ props
+          userLocation: userContext.userLocation,
+          userExperienceLevel: userContext.userExperienceLevel,
+          userSkills: userContext.userSkills
         })
         setSuggestions(response.suggestions || [])
         setRateLimited(false) // Clear rate limit on successful request
@@ -76,7 +89,7 @@ export default function SearchBar({
         setSuggestionLoading(false)
       }
     }, 200),
-    [rateLimited]
+    [rateLimited, userContext] // Thêm userContext vào dependencies
   )
 
   // Handle input changes
@@ -102,25 +115,39 @@ export default function SearchBar({
     const finalValue = inputValue.trim()
 
     if (finalValue && !rateLimited) {
-      searchHistoryUtils.addToHistory(finalValue)
+      // Only add to localStorage if not using backend history
+      if (!backendHistory) {
+        searchHistoryUtils.addToHistory(finalValue)
+      }
       onChange(finalValue)
       setShowDropdown(false)
       setShowHistory(false)
       inputRef.current?.blur()
     }
-  }, [inputValue, onChange, rateLimited])
+  }, [inputValue, onChange, rateLimited, backendHistory])
 
   // Handle suggestion selection
   const handleSuggestionSelect = useCallback((suggestion) => {
     const selectedText = suggestion.text || suggestion
     setInputValue(selectedText)
-    searchHistoryUtils.addToHistory(selectedText)
+    // Only add to localStorage if not using backend history
+    if (!backendHistory) {
+      searchHistoryUtils.addToHistory(selectedText)
+    }
     onChange(selectedText)
+    // If suggestion carries structured payload (company/location/etc), forward it
+    if (suggestion && suggestion.payload && typeof onSelectPayload === 'function') {
+      try {
+        onSelectPayload(suggestion.payload)
+      } catch (e) {
+        console.warn('onSelectPayload error', e)
+      }
+    }
     setShowDropdown(false)
     setShowHistory(false)
     setSelectedIndex(-1)
     inputRef.current?.blur()
-  }, [onChange])
+  }, [onChange, onSelectPayload, backendHistory])
 
   // Handle keyboard navigation
   const handleKeyDown = useCallback((e) => {
@@ -140,7 +167,8 @@ export default function SearchBar({
       case 'Enter':
         e.preventDefault()
         if (selectedIndex >= 0 && suggestions[selectedIndex]) {
-          handleSuggestionSelect(suggestions[selectedIndex])
+          const s = suggestions[selectedIndex]
+          handleSuggestionSelect(s)
         } else {
           handleSubmit(e)
         }
@@ -185,6 +213,30 @@ export default function SearchBar({
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
+  // Handle wheel events on search bar to scroll dropdowns instead of parent elements
+  const handleWheel = useCallback((e) => {
+    // Find the active dropdown element
+    let dropdownElement = null
+    if (showDropdown && dropdownRef.current) {
+      dropdownElement = dropdownRef.current
+    } else if (showHistory && historyRef.current) {
+      dropdownElement = historyRef.current
+    }
+
+    if (dropdownElement) {
+      const { scrollTop, scrollHeight, clientHeight } = dropdownElement
+      const canScrollUp = scrollTop > 0
+      const canScrollDown = scrollTop < scrollHeight - clientHeight
+
+      // If dropdown can scroll in the direction of the wheel event, prevent default and handle scroll
+      if ((e.deltaY > 0 && canScrollDown) || (e.deltaY < 0 && canScrollUp)) {
+        e.preventDefault()
+        e.stopPropagation()
+        dropdownElement.scrollTop += e.deltaY
+      }
+    }
+  }, [showDropdown, showHistory])
+
   // Listen for history changes
   useEffect(() => {
     const handleHistoryChange = () => {
@@ -195,8 +247,17 @@ export default function SearchBar({
     return () => window.removeEventListener('search-history-changed', handleHistoryChange)
   }, [])
 
+  // Handle wheel events on search bar container
+  useEffect(() => {
+    const searchBarElement = searchBarRef.current
+    if (searchBarElement) {
+      searchBarElement.addEventListener('wheel', handleWheel, { passive: false })
+      return () => searchBarElement.removeEventListener('wheel', handleWheel)
+    }
+  }, [handleWheel])
+
   return (
-    <div className={`search-bar ${className}`}>
+    <div ref={searchBarRef} className={`search-bar ${className}`}>
       <form onSubmit={handleSubmit} className="search-form">
         <div className="search-input-container">
           <input
@@ -215,6 +276,37 @@ export default function SearchBar({
             aria-autocomplete="list"
             disabled={rateLimited}
           />
+
+          <button
+            type="button"
+            className={`clear-button ${inputValue.trim() ? '' : 'hidden'}`}
+            onClick={() => {
+              setInputValue('')
+              setSelectedIndex(-1)
+              setShowDropdown(false)
+              setShowHistory(true)
+              setSuggestions([])
+              onChange('')
+              if (onClear) onClear()
+            }}
+            aria-label="Xóa tìm kiếm"
+            disabled={rateLimited}
+          >
+            <svg
+              className="clear-icon"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              aria-hidden="true"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M6 18L18 6M6 6l12 12"
+              />
+            </svg>
+          </button>
 
           <button
             type="submit"
@@ -252,6 +344,19 @@ export default function SearchBar({
           selectedIndex={selectedIndex}
           onSelect={handleSuggestionSelect}
           query={inputValue}
+        />
+      )}
+
+      {showSuggestions && showHistory && !showDropdown && (
+        <SearchHistoryDropdown
+          ref={historyRef}
+          query={inputValue}
+          backendHistory={backendHistory}
+          onRemoveHistoryEntry={onRemoveHistoryEntry}
+          onClearAllHistory={onClearAllHistory}
+          isLoading={searchHistoryLoading}
+          onSelect={handleSuggestionSelect}
+          onClose={() => setShowHistory(false)}
         />
       )}
     </div>

@@ -10,9 +10,9 @@ import RequireAdmin from "./auth/RequireAdmin.jsx"
 const Home = React.lazy(() => import("./pages/Home.jsx"))
 const JobDetail = React.lazy(() => import("./pages/JobDetail.jsx"))
 const PostJob = React.lazy(() => import("./pages/PostJob.jsx"))
+const EditJob = React.lazy(() => import("./pages/EditJob.jsx"))
 const Login = React.lazy(() => import("./pages/Login.jsx"))
 const ApplyJob = React.lazy(() => import("./pages/ApplyJob.jsx"))
-const CompaniesPage = React.lazy(() => import("./pages/CompaniesPage.jsx"))
 const Register = React.lazy(() => import("./pages/Register.jsx"))
 const VerifyEmail = React.lazy(() => import("./pages/VerifyEmail.jsx"))
 const ForgotPassword = React.lazy(() => import("./pages/ForgotPassword.jsx"))
@@ -21,11 +21,11 @@ const ResetPassword = React.lazy(() => import("./pages/ResetPassword.jsx"))
 const ChangePassword = React.lazy(() => import("./pages/ChangePassword.jsx"))
 const Profile = React.lazy(() => import("./pages/Profile.jsx"))
 const RecruiterDashboard = React.lazy(() => import("./pages/RecruiterDashboard.jsx"))
+const RecruiterLayout = React.lazy(() => import("./pages/RecruiterLayout.jsx"))
 const RecruiterChangePassword = React.lazy(() => import("./pages/RecruiterChangePassword.jsx"))
 const CompanyOnboardingPage = React.lazy(() => import("./pages/CompanyOnboardingPage.jsx"))
 const RecruiterCompanyPage = React.lazy(() => import("./pages/RecruiterCompanyPage.jsx"))
 const RecruiterCompanyGuard = React.lazy(() => import("./pages/RecruiterCompanyGuard.jsx"))
-const CompanyDetailsPage = React.lazy(() => import("./pages/CompanyDetailsPage.jsx"))
 const ResumesList = React.lazy(() => import("./pages/ResumesList.jsx"))
 const ResumeCreate = React.lazy(() => import("./pages/ResumeCreate.jsx"))
 const ResumeDetail = React.lazy(() => import("./pages/ResumeDetail.jsx"))
@@ -48,10 +48,11 @@ const AdminLogin = React.lazy(() => import("./pages/admin/AdminLogin.jsx"))
 
 // New search and matching components
 const SearchPage = React.lazy(() => import("./pages/SearchPage.jsx"))
-const ForYou = React.lazy(() => import("./pages/Recommendations/ForYou.jsx"))
+const CompanyList = React.lazy(() => import("./pages/CompanyList.jsx"))
+const CompanyDetailsPage = React.lazy(() => import("./pages/CompanyDetailsPage.jsx"))
 const CandidateRecommendations = React.lazy(() => import("./pages/Recruiter/CandidateRecommendations.jsx"))
 const JobCandidates = React.lazy(() => import("./pages/Recruiter/JobCandidates.jsx"))
-const MatchedJobs = React.lazy(() => import("./pages/Candidate/MatchedJobs.jsx"))
+const JobView = React.lazy(() => import("./pages/Recruiter/JobView.jsx"))
 
 import "./index.css"
 
@@ -62,9 +63,9 @@ const router = createBrowserRouter(
     element: <App />,
     children: [
       { index: true, element: <Home /> },
-      { path: 'companies', element: <CompaniesPage /> },
-      { path: 'companies/:id', element: <CompanyDetailsPage /> },
       { path: 'search', element: <SearchPage /> },
+      { path: 'companies', element: <CompanyList /> },
+      { path: 'companies/:id', element: <CompanyDetailsPage /> },
       { path: 'search/:id/apply', element: (
         <RequireSeeker>
           <ApplyJob />
@@ -115,78 +116,60 @@ const router = createBrowserRouter(
           <MyApplicationDetail />
         </RequireSeeker>
       ) },
-      { path: 'recommendations/for-you', element: (
-        <RequireSeeker>
-          <ForYou />
-        </RequireSeeker>
-      ) },
-      { path: 'matched-jobs', element: (
-        <RequireSeeker>
-          <MatchedJobs />
-        </RequireSeeker>
-      ) },
-      { path: 'post-job', element: (
-        <RequireRecruiter>
-          <PostJob />
-        </RequireRecruiter>
-      ) },
-      { path: 'recruiter/dashboard', element: (
-        <RequireRecruiter>
-          <RecruiterDashboard />
-        </RequireRecruiter>
-      ) },
-      { path: 'recruiter/talent-pool', element: (
-        <RequireRecruiter>
-          <RecruiterDashboard />
-        </RequireRecruiter>
-      ) },
-      { path: 'recruiter/company', element: (
-        <RequireRecruiter>
-          <RecruiterCompanyGuard>
-            <RecruiterCompanyPage />
-          </RecruiterCompanyGuard>
-        </RequireRecruiter>
-      ) },
-      { path: 'recruiter/change-password', element: (
-        <RequireRecruiter>
-          <RecruiterChangePassword />
-        </RequireRecruiter>
-      ) },
-      { path: 'recruiter/jobs', element: (
-        <RequireRecruiter>
-          <RecruiterDashboard />
-        </RequireRecruiter>
-      ) },
-      { path: 'recruiter/jobs/:id/manage', element: (
-        <RequireRecruiter>
-          <JobManage />
-        </RequireRecruiter>
-      ) },
-      { path: 'recruiter/jobs/:jobId/applications', element: (
-        <RequireRecruiter>
-          <ApplicationsList />
-        </RequireRecruiter>
-      ) },
-      { path: 'recruiter/applications/:id', element: (
-        <RequireRecruiter>
-          <ApplicationDetail />
-        </RequireRecruiter>
-      ) },
-      { path: 'recruiter/shortlisted', element: (
-        <RequireRecruiter>
-          <ShortlistedList />
-        </RequireRecruiter>
-      ) },
-      { path: 'recruiter/candidate-recommendations', element: (
-        <RequireRecruiter>
-          <CandidateRecommendations />
-        </RequireRecruiter>
-      ) },
-      { path: 'recruiter/jobs/:jobId/candidates', element: (
-        <RequireRecruiter>
-          <JobCandidates />
-        </RequireRecruiter>
-      ) },
+      {
+        path: "post-job",
+        element: (
+          <RequireRecruiter>
+            <React.Suspense fallback={null}>
+              <RecruiterLayout />
+            </React.Suspense>
+          </RequireRecruiter>
+        ),
+        children: [{ index: true, element: <PostJob /> }],
+      },
+      {
+        path: "edit-job/:jobId",
+        element: (
+          <RequireRecruiter>
+            <React.Suspense fallback={null}>
+              <RecruiterLayout />
+            </React.Suspense>
+          </RequireRecruiter>
+        ),
+        children: [{ index: true, element: <EditJob /> }],
+      },
+      {
+        path: "recruiter",
+        element: (
+          <RequireRecruiter>
+            <React.Suspense fallback={null}>
+              <RecruiterLayout />
+            </React.Suspense>
+          </RequireRecruiter>
+        ),
+        children: [
+          { index: true, element: <RecruiterDashboard /> },
+          { path: "dashboard", element: <RecruiterDashboard /> },
+          { path: "talent-pool", element: <RecruiterDashboard /> },
+          {
+            path: "company",
+            element: (
+              <RecruiterCompanyGuard>
+                <RecruiterCompanyPage />
+              </RecruiterCompanyGuard>
+            ),
+          },
+          { path: "change-password", element: <RecruiterChangePassword /> },
+          { path: "jobs", element: <RecruiterDashboard /> },
+          { path: "jobs/:id/view", element: <JobView /> },
+          { path: "jobs/:id/manage", element: <JobManage /> },
+          { path: "jobs/:jobId/applications", element: <ApplicationsList /> },
+          { path: "applications/:id", element: <ApplicationDetail /> },
+          { path: "shortlisted", element: <ShortlistedList /> },
+          { path: "candidate-recommendations", element: <CandidateRecommendations /> },
+          { path: "jobs/:jobId/candidates", element: <JobCandidates /> },
+        ],
+      },
       { path: 'onboarding/company', element: (
         <RequireRecruiter>
           <CompanyOnboardingPage />

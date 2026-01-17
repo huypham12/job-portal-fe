@@ -1,8 +1,8 @@
-import React from 'react'
-import CompanyCard from './CompanyCard.jsx'
-import CompanySkeleton from './CompanySkeleton.jsx'
+import React from "react";
+import CompanyCard from "./CompanyCard.jsx";
+import CompanySkeleton from "./CompanySkeleton.jsx";
 
-const range = (n) => Array.from({ length: n }, (_, i) => i)
+const range = (n) => Array.from({ length: n }, (_, i) => i);
 
 export default function CompanyList({
   items,
@@ -16,33 +16,41 @@ export default function CompanyList({
   sort,
   onSortChange,
   clearFilters,
-  sortOptions
+  sortOptions,
 }) {
-  const totalPages = Math.max(1, Math.ceil((total || 0) / (limit || 1)))
+  const totalPages = Math.max(1, Math.ceil((total || 0) / (limit || 1)));
 
   const renderPagination = () => {
-    if (!total || totalPages <= 1) return null
-    const pages = range(totalPages).map((i) => i + 1)
+    if (!total || totalPages <= 1) return null;
+    const pages = range(totalPages).map((i) => i + 1);
     return (
       <div className="pagination">
-        <button disabled={page <= 1} onClick={() => onPageChange(page - 1)} className="btn ghost">
+        <button
+          disabled={page <= 1}
+          onClick={() => onPageChange(page - 1)}
+          className="btn ghost"
+        >
           Trước
         </button>
         {pages.map((p) => (
           <button
             key={p}
             onClick={() => onPageChange(p)}
-            className={`btn ghost page-btn ${p === page ? 'active' : ''}`}
+            className={`btn ghost page-btn ${p === page ? "active" : ""}`}
           >
             {p}
           </button>
         ))}
-        <button disabled={page >= totalPages} onClick={() => onPageChange(page + 1)} className="btn ghost">
+        <button
+          disabled={page >= totalPages}
+          onClick={() => onPageChange(page + 1)}
+          className="btn ghost"
+        >
           Sau
         </button>
       </div>
-    )
-  }
+    );
+  };
 
   if (error && (!items || !items.length)) {
     return (
@@ -54,13 +62,13 @@ export default function CompanyList({
           </button>
         </div>
       </div>
-    )
+    );
   }
 
   return (
     <div className="list-card">
       <div className="list-head">
-        <div>
+        <div className="list-head-content">
           <h2>{total || 0} công ty phù hợp</h2>
           <p className="muted">Lọc và sắp xếp để tìm nhà tuyển dụng phù hợp</p>
         </div>
@@ -105,5 +113,5 @@ export default function CompanyList({
         </div>
       )}
     </div>
-  )
+  );
 }

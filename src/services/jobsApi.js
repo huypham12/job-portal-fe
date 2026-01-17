@@ -76,6 +76,13 @@ export const jobsApi = {
     api.post("/api/jobs/bulk-actions", payload).then(pickData),
 
   /**
+   * Publish jobs from draft to pending_approval
+   * POST /api/jobs/publish
+   */
+  publishJobs: (payload) =>
+    api.post("/api/jobs/publish", payload).then(pickData),
+
+  /**
    * Bulk extend job expiry dates
    * PATCH /api/jobs/bulk-extend
    */

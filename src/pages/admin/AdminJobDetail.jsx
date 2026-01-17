@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { adminApi } from '../../services/adminApi'
-import './styles/admin-jobs.css'
 
 function formatDate(dateString) {
   if (!dateString) return '--'
@@ -29,7 +28,8 @@ export default function AdminJobDetail() {
   const [showRejectModal, setShowRejectModal] = useState(false)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [rejectReason, setRejectReason] = useState('')
-  const [labels, setLabels] = useState({ hot: false, urgent: false, featured: false })
+  const [showHardDeleteModal, setShowHardDeleteModal] = useState(false)
+  const [hardDeleting, setHardDeleting] = useState(false)
 
   useEffect(() => {
     loadJob()
@@ -87,15 +87,6 @@ export default function AdminJobDetail() {
       }
       
       setJob(jobData)
-      
-      // Load labels from metadata
-      if (jobData.metadata?.labels) {
-        setLabels({
-          hot: jobData.metadata.labels.hot || false,
-          urgent: jobData.metadata.labels.urgent || false,
-          featured: jobData.metadata.labels.featured || false,
-        })
-      }
     } catch (err) {
       console.error('[AdminJobDetail] Failed to load job:', err)
       console.error('[AdminJobDetail] Error details:', {
@@ -147,19 +138,6 @@ export default function AdminJobDetail() {
     }
   }
 
-  const handleUpdateLabels = async () => {
-    setProcessing(true)
-    try {
-      await adminApi.updateJobLabels(id, labels)
-      alert('Cập nhật nhãn thành công!')
-      loadJob()
-    } catch (err) {
-      console.error('Failed to update labels:', err)
-      alert(err?.message || 'Không thể cập nhật nhãn.')
-    } finally {
-      setProcessing(false)
-    }
-  }
 
   const handleDelete = async () => {
     setProcessing(true)
@@ -178,7 +156,7 @@ export default function AdminJobDetail() {
 
   const handleRestore = async () => {
     if (!confirm('Bạn có chắc chắn muốn khôi phục công việc này?')) return
-    
+
     setProcessing(true)
     try {
       await adminApi.restoreJob(id)
@@ -189,6 +167,21 @@ export default function AdminJobDetail() {
       alert(err?.message || 'Không thể khôi phục công việc.')
     } finally {
       setProcessing(false)
+    }
+  }
+
+  const handleHardDelete = async () => {
+    setHardDeleting(true)
+    try {
+      await adminApi.hardDeleteJob(id)
+      alert('Xóa vĩnh viễn công việc thành công!')
+      navigate('/admin/jobs')
+    } catch (err) {
+      console.error('Failed to hard delete job:', err)
+      alert(err?.message || 'Không thể xóa vĩnh viễn công việc.')
+    } finally {
+      setHardDeleting(false)
+      setShowHardDeleteModal(false)
     }
   }
 
@@ -218,6 +211,7 @@ export default function AdminJobDetail() {
   const getStatusLabel = (status) => {
     const labels = {
       draft: 'Nháp',
+      pending_approval: 'Chờ duyệt',
       approved: 'Đã duyệt',
       closed: 'Đã đóng',
     }
@@ -227,6 +221,7 @@ export default function AdminJobDetail() {
   const getStatusColor = (status) => {
     const colors = {
       draft: 'warning',
+      pending_approval: 'info',
       approved: 'success',
       closed: 'danger',
     }
@@ -305,9 +300,6 @@ export default function AdminJobDetail() {
             <div className="admin-card admin-card-warning">
               <h2>Lý do từ chối</h2>
               <p>{job.metadata.rejection_reason}</p>
-              {job.metadata.rejected_at && (
-                <p className="admin-muted">Từ chối vào: {formatDate(job.metadata.rejected_at)}</p>
-              )}
             </div>
           )}
 
@@ -317,7 +309,7 @@ export default function AdminJobDetail() {
           <div className="admin-card">
             <h2>Hành động</h2>
             <div className="admin-actions-list">
-              {job.status === 'draft' && !job.deleted && (
+              {job.status === 'pending_approval' && !job.deleted && (
                 <>
                   <button
                     className="admin-btn admin-btn-success admin-btn-block"
@@ -358,44 +350,22 @@ export default function AdminJobDetail() {
             </div>
           </div>
 
-          <div className="admin-card">
-            <h2>Nhãn</h2>
-            <div className="admin-labels-form">
-              <label className="admin-checkbox-label">
-                <input
-                  type="checkbox"
-                  checked={labels.hot}
-                  onChange={(e) => setLabels({ ...labels, hot: e.target.checked })}
-                />
-                <span>Hot</span>
-              </label>
-              <label className="admin-checkbox-label">
-                <input
-                  type="checkbox"
-                  checked={labels.urgent}
-                  onChange={(e) => setLabels({ ...labels, urgent: e.target.checked })}
-                />
-                <span>Urgent</span>
-              </label>
-              <label className="admin-checkbox-label">
-                <input
-                  type="checkbox"
-                  checked={labels.featured}
-                  onChange={(e) => setLabels({ ...labels, featured: e.target.checked })}
-                />
-                <span>Featured</span>
-              </label>
-              <button
-                className="admin-btn admin-btn-primary admin-btn-block"
-                onClick={handleUpdateLabels}
-                disabled={processing}
-                style={{ marginTop: '16px' }}
-              >
-                {processing ? 'Đang lưu...' : 'Cập nhật nhãn'}
-              </button>
-            </div>
-          </div>
         </div>
+      </div>
+
+      <div className="admin-card admin-card-danger">
+        <h2>Xóa vĩnh viễn</h2>
+        <p className="admin-muted">
+          Hành động này sẽ xóa vĩnh viễn công việc khỏi hệ thống và không thể hoàn tác.
+          Công việc sẽ bị xóa khỏi Elasticsearch và tất cả dữ liệu liên quan.
+        </p>
+        <button
+          className="admin-btn admin-btn-danger"
+          onClick={() => setShowHardDeleteModal(true)}
+          disabled={hardDeleting}
+        >
+          {hardDeleting ? 'Đang xóa...' : 'Xóa vĩnh viễn'}
+        </button>
       </div>
 
       {showRejectModal && (
@@ -455,6 +425,34 @@ export default function AdminJobDetail() {
                 disabled={processing}
               >
                 {processing ? 'Đang xóa...' : 'Xác nhận xóa'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showHardDeleteModal && (
+        <div className="admin-modal-overlay" onClick={() => setShowHardDeleteModal(false)}>
+          <div className="admin-modal" onClick={(e) => e.stopPropagation()}>
+            <h3>Xác nhận xóa vĩnh viễn</h3>
+            <p>Bạn có chắc chắn muốn xóa vĩnh viễn công việc <strong>"{job.title}"</strong>?</p>
+            <p className="admin-muted">
+              Hành động này sẽ xóa hoàn toàn công việc khỏi database và Elasticsearch.
+              Không thể khôi phục lại dữ liệu này.
+            </p>
+            <div className="admin-modal-actions">
+              <button
+                className="admin-btn admin-btn-secondary"
+                onClick={() => setShowHardDeleteModal(false)}
+              >
+                Hủy
+              </button>
+              <button
+                className="admin-btn admin-btn-danger"
+                onClick={handleHardDelete}
+                disabled={hardDeleting}
+              >
+                {hardDeleting ? 'Đang xóa...' : 'Xóa vĩnh viễn'}
               </button>
             </div>
           </div>

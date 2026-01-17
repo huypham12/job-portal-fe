@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { adminApi } from '../../services/adminApi'
-import './styles/admin-jobs.css'
 
 const PAGE_SIZE = 20
 

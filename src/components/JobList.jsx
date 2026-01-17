@@ -4,6 +4,7 @@ import LoadingSkeleton from './LoadingSkeleton.jsx'
 import NoResults from './NoResults.jsx'
 import Pagination from './Pagination.jsx'
 import './JobList.css'
+import { normalizeSearchHit } from '../lib/normalizeSearchHit.js'
 
 export default function JobList({
   jobs = [],
@@ -70,14 +71,18 @@ export default function JobList({
   return (
     <div className={`job-list ${className}`}>
       <div className="job-grid">
-        {jobs.map((job, index) => (
-          <JobCard
-            key={job.id || `job-${index}`}
-            job={job._source || job}
-            highlight={job.highlight || job._highlight}
-            onClick={() => handleJobClick(job)}
-          />
-        ))}
+        {jobs.map((hit, index) => {
+          // normalize each hit to a stable job object
+          const job = normalizeSearchHit(hit)
+          return (
+            <JobCard
+              key={job.id || `job-${index}`}
+              job={job}
+              highlight={job.highlight}
+              onClick={() => handleJobClick(job)}
+            />
+          )
+        })}
       </div>
 
       {showPagination && totalPages > 1 && (

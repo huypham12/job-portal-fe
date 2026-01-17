@@ -1,12 +1,11 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { adminApi } from '../../services/adminApi'
-import './styles/admin-jobs.css'
 
 const PAGE_SIZE = 20
 const STATUS_OPTIONS = [
   { value: '', label: 'Tất cả' },
-  { value: 'draft', label: 'Nháp' },
+  { value: 'pending_approval', label: 'Chờ duyệt' },
   { value: 'approved', label: 'Đã duyệt' },
   { value: 'closed', label: 'Đã đóng' },
 ]
@@ -34,6 +33,7 @@ export default function AdminJobsList() {
   const [error, setError] = useState(null)
   const [currentPage, setCurrentPage] = useState(1)
   const [pagination, setPagination] = useState({ page: 1, limit: PAGE_SIZE, total: 0, totalPages: 1 })
+  const [processing, setProcessing] = useState({})
 
   const [filters, setFilters] = useState({
     search: '',
@@ -50,7 +50,7 @@ export default function AdminJobsList() {
         limit: PAGE_SIZE,
         ...(filters.search && { search: filters.search }),
         ...(filters.status && { status: filters.status }),
-        ...(filters.deleted && { deleted: filters.deleted === 'true' }),
+        ...(filters.deleted !== '' && { deleted: filters.deleted === 'true' }),
       }
 
       const response = await adminApi.getAllJobs(params)
@@ -90,9 +90,42 @@ export default function AdminJobsList() {
     navigate(`/admin/jobs/${jobId}`)
   }
 
+  const handleDeleteJob = async (jobId, jobTitle) => {
+    if (!confirm(`Bạn có chắc chắn muốn xóa công việc "${jobTitle}" vì vi phạm?`)) return
+
+    setProcessing({ ...processing, [jobId]: 'deleting' })
+    try {
+      await adminApi.deleteJobForViolation(jobId)
+      alert('Xóa công việc thành công!')
+      fetchJobs()
+    } catch (err) {
+      console.error('Failed to delete job:', err)
+      alert(err?.message || 'Không thể xóa công việc.')
+    } finally {
+      setProcessing({ ...processing, [jobId]: null })
+    }
+  }
+
+  const handleRestoreJob = async (jobId, jobTitle) => {
+    if (!confirm(`Bạn có chắc chắn muốn khôi phục công việc "${jobTitle}"?`)) return
+
+    setProcessing({ ...processing, [jobId]: 'restoring' })
+    try {
+      await adminApi.restoreJob(jobId)
+      alert('Khôi phục công việc thành công!')
+      fetchJobs()
+    } catch (err) {
+      console.error('Failed to restore job:', err)
+      alert(err?.message || 'Không thể khôi phục công việc.')
+    } finally {
+      setProcessing({ ...processing, [jobId]: null })
+    }
+  }
+
   const getStatusLabel = (status) => {
     const labels = {
       draft: 'Nháp',
+      pending_approval: 'Chờ duyệt',
       approved: 'Đã duyệt',
       closed: 'Đã đóng',
     }
@@ -102,20 +135,13 @@ export default function AdminJobsList() {
   const getStatusColor = (status) => {
     const colors = {
       draft: 'warning',
+      pending_approval: 'info',
       approved: 'success',
       closed: 'danger',
     }
     return colors[status] || ''
   }
 
-  const getLabels = (metadata) => {
-    if (!metadata || !metadata.labels) return []
-    const labels = []
-    if (metadata.labels.hot) labels.push({ text: 'Hot', color: '#ef4444' })
-    if (metadata.labels.urgent) labels.push({ text: 'Urgent', color: '#f59e0b' })
-    if (metadata.labels.featured) labels.push({ text: 'Featured', color: '#8b5cf6' })
-    return labels
-  }
 
   return (
     <div className="admin-jobs-list">
@@ -159,6 +185,36 @@ export default function AdminJobsList() {
             </select>
           </div>
         </div>
+
+        {/* Hiển thị thông tin về jobs đã xóa hoặc nút quay lại */}
+        {filters.deleted === '' && jobs.some(j => j.deleted) && (
+          <div className="admin-deleted-info">
+            <span className="admin-deleted-text">
+              Có công việc đã xóa vi phạm trong danh sách này
+            </span>
+            <button
+              className="admin-btn admin-btn-link admin-btn-small"
+              onClick={() => handleFilterChange('deleted', 'true')}
+            >
+              Xem jobs đã xóa →
+            </button>
+          </div>
+        )}
+
+        {filters.deleted === 'true' && (
+          <div className="admin-deleted-info" style={{ background: '#dbeafe', borderColor: '#bfdbfe' }}>
+            <span className="admin-deleted-text" style={{ color: '#1e40af' }}>
+              Đang xem danh sách công việc đã xóa vi phạm
+            </span>
+            <button
+              className="admin-btn admin-btn-link admin-btn-small"
+              onClick={() => handleFilterChange('deleted', '')}
+              style={{ color: '#1e40af' }}
+            >
+              ← Quay lại
+            </button>
+          </div>
+        )}
       </div>
 
       {loading && (
@@ -186,7 +242,6 @@ export default function AdminJobsList() {
                     <th>Tiêu đề</th>
                     <th>Công ty</th>
                     <th>Trạng thái</th>
-                    <th>Nhãn</th>
                     <th>Ngày đăng</th>
                     <th>Ngày hết hạn</th>
                     <th>Hành động</th>
@@ -195,59 +250,63 @@ export default function AdminJobsList() {
                 <tbody>
                   {jobs.length === 0 ? (
                     <tr>
-                      <td colSpan="7" className="admin-empty-state">
+                      <td colSpan="6" className="admin-empty-state">
                         Không tìm thấy công việc nào
                       </td>
                     </tr>
                   ) : (
-                    jobs.map((job) => {
-                      const labels = getLabels(job.metadata)
-                      return (
-                        <tr key={job.id}>
-                          <td>
-                            <div className="admin-job-title">{job.title || '--'}</div>
-                            {job.deleted && (
-                              <span className="admin-badge admin-badge-danger" style={{ fontSize: '10px', marginTop: '4px' }}>
-                                Đã xóa
-                              </span>
-                            )}
-                          </td>
-                          <td>{job.companies?.name || '--'}</td>
-                          <td>
-                            <span className={`admin-badge admin-badge-${getStatusColor(job.status)}`}>
-                              {getStatusLabel(job.status)}
-                            </span>
-                          </td>
-                          <td>
-                            <div className="admin-labels">
-                              {labels.length > 0 ? (
-                                labels.map((label, idx) => (
-                                  <span
-                                    key={idx}
-                                    className="admin-label-badge"
-                                    style={{ backgroundColor: `${label.color}15`, color: label.color }}
-                                  >
-                                    {label.text}
-                                  </span>
-                                ))
-                              ) : (
-                                <span className="admin-muted">--</span>
-                              )}
+                    jobs.map((job) => (
+                      <tr key={job.id}>
+                        <td>
+                          <div className="admin-job-title">{job.title || '--'}</div>
+                          {job.status === 'closed' && job.admin_approved === false && job.metadata?.rejection_reason && (
+                            <div style={{ marginTop: 6, color: '#b91c1c', fontSize: 12 }}>
+                              Lý do từ chối: {job.metadata.rejection_reason}
                             </div>
-                          </td>
-                          <td>{formatDate(job.posted_at)}</td>
-                          <td>{formatDate(job.expires_at)}</td>
-                          <td>
+                          )}
+                          {job.deleted && (
+                            <span className="admin-badge admin-badge-danger" style={{ fontSize: '10px', marginTop: '4px' }}>
+                              Đã xóa
+                            </span>
+                          )}
+                        </td>
+                        <td>{job.companies?.name || '--'}</td>
+                        <td>
+                          <span className={`admin-badge admin-badge-${getStatusColor(job.status)}`}>
+                            {getStatusLabel(job.status)}
+                          </span>
+                        </td>
+                        <td>{formatDate(job.posted_at)}</td>
+                        <td>{formatDate(job.expires_at)}</td>
+                        <td>
+                          <div className="admin-actions-group">
                             <button
-                              className="admin-btn admin-btn-link"
+                              className="admin-btn admin-btn-link admin-btn-small"
                               onClick={() => handleViewDetail(job.id)}
                             >
-                              Xem chi tiết
+                              Chi tiết
                             </button>
-                          </td>
-                        </tr>
-                      )
-                    })
+                            {job.deleted ? (
+                              <button
+                                className="admin-btn admin-btn-success admin-btn-small"
+                                onClick={() => handleRestoreJob(job.id, job.title)}
+                                disabled={processing[job.id]}
+                              >
+                                {processing[job.id] === 'restoring' ? 'Đang khôi phục...' : 'Khôi phục'}
+                              </button>
+                            ) : (
+                              <button
+                                className="admin-btn admin-btn-danger admin-btn-small"
+                                onClick={() => handleDeleteJob(job.id, job.title)}
+                                disabled={processing[job.id]}
+                              >
+                                {processing[job.id] === 'deleting' ? 'Đang xóa...' : 'Xóa'}
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ))
                   )}
                 </tbody>
               </table>

@@ -86,7 +86,11 @@ const getInitials = (name = '') => {
 }
 
 export default function JobCard({ job, highlight }) {
-  const companyName = job.companyName || job.company || 'Chưa có tên công ty'
+  const companyName =
+    job.companyName ||
+    (job.company && (typeof job.company === 'string' ? job.company : job.company.name)) ||
+    job.company_name ||
+    'Chưa có tên công ty'
   const title = job.title || 'Chưa đặt tiêu đề'
   const location = job.location || job.city || job.country || 'Bất kỳ'
   const jobTypeRaw = job.jobType || job.job_type || job.type
@@ -140,19 +144,23 @@ export default function JobCard({ job, highlight }) {
         />
       ) : null}
 
-      {!!skills.length && (
-        <div className="skills-row">
-          {skills.map((skill) => (
-            <span key={skill} className="chip small">
-              {skill}
-            </span>
-          ))}
-        </div>
-      )}
+  {!!skills.length && (
+    <div className="skills-row">
+      {skills.map((skill, i) => {
+        const label = typeof skill === 'string' ? skill : skill?.name || skill?.label || JSON.stringify(skill)
+        const key = (skill && (skill.id || skill.name)) || `${label}-${i}`
+        return (
+          <span key={key} className="chip small">
+            {label}
+          </span>
+        )
+      })}
+    </div>
+  )}
 
       {job.id && (
         <div className="job-card__footer">
-          <Link to={`/jobs/${job.id}`} className="btn-inline">
+          <Link to={`/search/${job.id}`} className="btn-inline">
             Xem chi tiết →
           </Link>
         </div>

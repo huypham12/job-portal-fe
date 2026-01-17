@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { adminApi } from '../../services/adminApi'
-import './styles/admin-users.css'
 
 const ROLE_OPTIONS = [
   { value: 'candidate', label: 'Ứng viên' },

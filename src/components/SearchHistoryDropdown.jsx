@@ -1,67 +1,171 @@
-import React from 'react'
-import { searchHistoryUtils } from '../utils/searchHistory.js'
-import './SearchHistoryDropdown.css'
+import React, { useState, useEffect } from "react";
+import { searchHistoryUtils } from "../utils/searchHistory.js";
+import "./SearchHistoryDropdown.css";
 
-export default function SearchHistoryDropdown({
-  onSelect,
-  onClose,
-  query = ''
-}) {
-  const history = searchHistoryUtils.getHistory()
-  const recentSearches = searchHistoryUtils.getRecentSearches()
+const SearchHistoryDropdown = React.forwardRef(function SearchHistoryDropdown(
+  {
+    onSelect,
+    onClose,
+    query = "",
+    // New props for backend integration
+    backendHistory = null, // { history: [], pagination: {} }
+    onRemoveHistoryEntry = null, // callback for removing backend history
+    onClearAllHistory = null, // callback for clearing all backend history
+    isLoading = false,
+  },
+  ref
+) {
+  // Add state to track localStorage history changes
+  const [localHistory, setLocalHistory] = useState(() =>
+    searchHistoryUtils.getHistory()
+  );
+
+  // Listen for history changes
+  useEffect(() => {
+    if (!backendHistory) {
+      const handleHistoryChange = () => {
+        setLocalHistory(searchHistoryUtils.getHistory());
+      };
+
+      window.addEventListener("search-history-changed", handleHistoryChange);
+
+      return () => {
+        window.removeEventListener(
+          "search-history-changed",
+          handleHistoryChange
+        );
+      };
+    }
+  }, [backendHistory]);
+
+  // Use backend data if available, otherwise fallback to localStorage state
+  const history = backendHistory?.history || localHistory;
+  const recentSearches =
+    backendHistory?.history?.slice(0, 3) ||
+    searchHistoryUtils.getRecentSearches();
 
   const handleSelect = (term) => {
-    onSelect(term)
-    searchHistoryUtils.addToHistory(term)
-  }
+    onSelect(term);
+    searchHistoryUtils.addToHistory(term);
+  };
 
-  const handleRemove = (e, term) => {
-    e.stopPropagation()
-    searchHistoryUtils.removeFromHistory(term)
-    // Force re-render by triggering state update in parent
-    window.dispatchEvent(new CustomEvent('search-history-changed'))
-  }
+  const handleRemove = (e, item) => {
+    e.stopPropagation();
+
+    if (backendHistory && onRemoveHistoryEntry) {
+      // Handle backend history removal
+      onRemoveHistoryEntry(item.id);
+    } else {
+      // Handle localStorage removal
+      searchHistoryUtils.removeFromHistory(item.term || item.query);
+      // Force re-render by triggering state update in parent
+      window.dispatchEvent(new CustomEvent("search-history-changed"));
+    }
+  };
 
   const handleClearAll = () => {
-    searchHistoryUtils.clearHistory()
-    window.dispatchEvent(new CustomEvent('search-history-changed'))
-  }
+    if (backendHistory && onClearAllHistory) {
+      // Handle backend history clearing
+      onClearAllHistory();
+    } else {
+      // Handle localStorage clearing
+      searchHistoryUtils.clearHistory();
+      window.dispatchEvent(new CustomEvent("search-history-changed"));
+    }
+  };
+
+  // Normalize data structure for consistent handling
+  const normalizeItem = (item) => {
+    if (backendHistory) {
+      // Backend data structure
+      return {
+        id: item.id,
+        term: item.term,
+        timestamp: new Date(item.timestamp),
+        isRecent: false,
+        resultCount: item.result_count,
+        filters: item.filters,
+      };
+    } else {
+      // localStorage data structure
+      return {
+        id: item.term,
+        term: item.term,
+        timestamp: item.timestamp,
+        isRecent: false,
+        count: item.count,
+      };
+    }
+  };
 
   // Filter history based on current query
-  const filteredHistory = history.filter(item =>
-    !query || item.term.toLowerCase().includes(query.toLowerCase())
-  )
+  const filteredHistory = history
+    .map(normalizeItem)
+    .filter(
+      (item) => !query || item.term.toLowerCase().includes(query.toLowerCase())
+    );
 
-  if (filteredHistory.length === 0 && recentSearches.length === 0) {
-    return null
+  // Separate recent searches (last 24 hours)
+  const recentSearchesNormalized = backendHistory
+    ? history
+        .slice(0, 3)
+        .map(normalizeItem)
+        .map((item) => ({ ...item, isRecent: true }))
+    : searchHistoryUtils
+        .getRecentSearches()
+        .map(normalizeItem)
+        .map((item) => ({ ...item, isRecent: true }));
+
+  if (isLoading) {
+    return (
+      <div className="search-history-dropdown">
+        <div className="search-history-section">
+          <div className="search-history-loading">Đang tải...</div>
+        </div>
+      </div>
+    );
+  }
+
+  if (filteredHistory.length === 0 && recentSearchesNormalized.length === 0) {
+    return null;
   }
 
   return (
     <div className="search-history-dropdown">
-      {recentSearches.length > 0 && (
+      {recentSearchesNormalized.length > 0 && (
         <div className="search-history-section">
           <div className="search-history-header">
             <h4>Tìm kiếm gần đây</h4>
           </div>
           <div className="search-history-list">
-            {recentSearches.slice(0, 3).map((item, index) => (
+            {recentSearchesNormalized.map((item, index) => (
               <div
-                key={`recent-${index}`}
+                key={`recent-${backendHistory ? item.id : index}`}
                 className="search-history-item"
                 onClick={() => handleSelect(item.term)}
               >
                 <div className="search-history-content">
                   <span className="search-history-term">{item.term}</span>
                   <span className="search-history-time">
-                    {new Date(item.timestamp).toLocaleTimeString('vi-VN', {
-                      hour: '2-digit',
-                      minute: '2-digit'
-                    })}
+                    {backendHistory
+                      ? item.timestamp.toLocaleTimeString("vi-VN", {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })
+                      : new Date(item.timestamp).toLocaleTimeString("vi-VN", {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
                   </span>
+                  {backendHistory && item.resultCount && (
+                    <span className="search-history-results">
+                      {item.resultCount} kết quả
+                    </span>
+                  )}
                 </div>
                 <button
                   className="search-history-remove"
-                  onClick={(e) => handleRemove(e, item.term)}
+                  onClick={(e) => handleRemove(e, item)}
                   aria-label={`Xóa "${item.term}" khỏi lịch sử`}
                 >
                   ×
@@ -81,26 +185,33 @@ export default function SearchHistoryDropdown({
                 className="search-history-clear-all"
                 onClick={handleClearAll}
               >
-                Xóa tất cả
+                Xóa lịch sử
               </button>
             )}
           </div>
           <div className="search-history-list">
             {filteredHistory.slice(0, 5).map((item, index) => (
               <div
-                key={`history-${index}`}
+                key={`history-${backendHistory ? item.id : index}`}
                 className="search-history-item"
                 onClick={() => handleSelect(item.term)}
               >
                 <div className="search-history-content">
                   <span className="search-history-term">{item.term}</span>
                   <span className="search-history-date">
-                    {new Date(item.timestamp).toLocaleDateString('vi-VN')}
+                    {backendHistory
+                      ? item.timestamp.toLocaleDateString("vi-VN")
+                      : new Date(item.timestamp).toLocaleDateString("vi-VN")}
                   </span>
+                  {backendHistory && item.resultCount && (
+                    <span className="search-history-results">
+                      {item.resultCount} kết quả
+                    </span>
+                  )}
                 </div>
                 <button
                   className="search-history-remove"
-                  onClick={(e) => handleRemove(e, item.term)}
+                  onClick={(e) => handleRemove(e, item)}
                   aria-label={`Xóa "${item.term}" khỏi lịch sử`}
                 >
                   ×
@@ -111,5 +222,7 @@ export default function SearchHistoryDropdown({
         </div>
       )}
     </div>
-  )
-}
+  );
+});
+
+export default SearchHistoryDropdown;

@@ -234,20 +234,23 @@ export const JobService = {
     if (process.env.NODE_ENV === "development") {
       console.log("JobService.list - Filters object:", filters);
       console.log("JobService.list - Query string:", query);
-      console.log("JobService.list - Full URL:", `/api/jobs${query}`);
+      console.log(
+        "JobService.list - Full URL:",
+        `/api/search/jobs/list${query}`
+      );
     }
-    return api.get(`/api/jobs${query}`);
+    return api.get(`/api/search/jobs/list${query}`);
   },
   /**
    * Get featured jobs (public)
    * @returns {Promise<{data: Array}>}
    */
-  featured: () => api.get("/api/jobs/featured"),
+  featured: () => api.get("/api/search/jobs/featured"),
   /**
    * Get latest jobs (public)
    * @returns {Promise<{data: Array}>}
    */
-  latest: () => api.get("/api/jobs/latest"),
+  latest: () => api.get("/api/search/jobs/latest"),
   /**
    * Get job detail (public)
    * @param {string} id - Job ID
@@ -575,6 +578,13 @@ export const ApplicationService = {
     api.get(`/api/applications/recruiter/job/${jobId}/stats`),
 
   /**
+   * Get dashboard statistics for recruiter (Recruiter)
+   * @returns {Promise<{data: {active_jobs: number, draft_jobs: number, total_applications: number}}>}
+   */
+  getDashboardStats: () =>
+    api.get("/api/applications/recruiter/dashboard/stats"),
+
+  /**
    * Get application detail (Candidate)
    */
   getDetail: (id) => api.get(`/api/applications/candidate/${id}`),
@@ -605,6 +615,23 @@ export const ApplicationService = {
    * Get application stages (Candidate)
    */
   getStages: (id) => api.get(`/api/applications/candidate/${id}/stages`),
+  /**
+   * Get single stage details (Candidate)
+   */
+  getStageDetail: (id, stageId) =>
+    api.get(`/api/applications/candidate/${id}/stage/${stageId}`),
+  /**
+   * Candidate accepts a stage
+   */
+  acceptStage: (id, stageId) =>
+    api.patch(`/api/applications/candidate/${id}/stage/${stageId}/accept`),
+  /**
+   * Candidate declines a stage
+   */
+  declineStage: (id, stageId, reason) =>
+    api.patch(`/api/applications/candidate/${id}/stage/${stageId}/decline`, {
+      reason,
+    }),
 
   /**
    * Get application timeline (Recruiter) - includes all stages
@@ -618,10 +645,43 @@ export const ApplicationService = {
     api.post(`/api/applications/recruiter/${id}/stage`, data),
 
   /**
+   * Bulk create interview stages with shared round_id (Recruiter)
+   */
+  bulkCreateStages: (data) =>
+    api.post("/api/applications/recruiter/bulk/create-stages", data),
+
+  /**
+   * Get interview round details (Recruiter)
+   */
+  getInterviewRound: (roundId) =>
+    api.get(`/api/applications/recruiter/rounds/${roundId}`),
+
+  /**
+   * Get all interview rounds for a job (Recruiter)
+   */
+  getJobInterviewRounds: (jobId) =>
+    api.get(`/api/applications/recruiter/job/${jobId}/rounds`),
+
+  /**
    * Update application stage (Recruiter)
    */
   updateStage: (id, data) =>
     api.patch(`/api/applications/recruiter/${id}/stage`, data),
+  /**
+   * Make a decision after a stage (Recruiter)
+   * action: 'create_next_stage' | 'accept_application'
+   */
+  makeStageDecision: (id, stageId, data) =>
+    api.post(
+      `/api/applications/recruiter/${id}/stage/${stageId}/decision`,
+      data
+    ),
+
+  /**
+   * Bulk stage decision for multiple candidates (Recruiter)
+   */
+  bulkStageDecision: (data) =>
+    api.post("/api/applications/recruiter/bulk/stage-decision", data),
 
   /**
    * Add application note (Recruiter)
@@ -638,7 +698,8 @@ export const ApplicationService = {
   /**
    * Add or remove candidate from shortlist (Recruiter)
    */
-  shortlistCandidate: (data) => api.post("/api/applications/shortlist", data),
+  shortlistCandidate: (data) =>
+    api.post("/api/applications/recruiter/shortlist", data),
 
   /**
    * Get shortlisted candidates (Recruiter)
@@ -651,18 +712,25 @@ export const ApplicationService = {
     if (filters.sort_by) params.append("sort_by", filters.sort_by);
     if (filters.order) params.append("order", filters.order);
     const query = params.toString();
-    return api.get(`/api/applications/shortlisted?${query}`);
+    return api.get(`/api/applications/recruiter/shortlisted?${query}`);
   },
 
   /**
    * Compare multiple candidates side-by-side (Recruiter)
    */
-  compareCandidates: (data) => api.post("/api/applications/compare", data),
+  compareCandidates: (data) =>
+    api.post("/api/applications/recruiter/compare", data),
 
   /**
    * Get application documents (Candidate)
    */
   getDocuments: (id) => api.get(`/api/applications/candidate/${id}/documents`),
+
+  /**
+   * Get application documents (Recruiter)
+   */
+  getDocumentsRecruiter: (id) =>
+    api.get(`/api/applications/recruiter/${id}/documents`),
 };
 
 // ============================================
@@ -677,25 +745,40 @@ export const MatchingService = {
    */
   matchCandidates: (jobId, filters = {}) => {
     const params = new URLSearchParams();
-    params.append('size', String(filters.size || 50));
+    params.append("size", String(filters.size || 50));
 
     // Build filters query string
-    if (filters.minScore !== undefined) params.append('min_score', String(filters.minScore));
-    if (filters.location) params.append('location', filters.location);
-    if (filters.experienceMin !== undefined) params.append('experience_min', String(filters.experienceMin));
-    if (filters.experienceMax !== undefined) params.append('experience_max', String(filters.experienceMax));
-    if (filters.education) params.append('education_level', filters.education);
+    if (filters.minScore !== undefined)
+      params.append("min_score", String(filters.minScore));
+    if (filters.location) params.append("location", filters.location);
+    if (filters.experienceMin !== undefined)
+      params.append("experience_min", String(filters.experienceMin));
+    if (filters.experienceMax !== undefined)
+      params.append("experience_max", String(filters.experienceMax));
+    if (filters.education) params.append("education_level", filters.education);
 
     // Add any additional filters
     Object.entries(filters).forEach(([key, value]) => {
-      if (value !== undefined && value !== null &&
-          !['size', 'minScore', 'location', 'experienceMin', 'experienceMax', 'education'].includes(key)) {
+      if (
+        value !== undefined &&
+        value !== null &&
+        ![
+          "size",
+          "minScore",
+          "location",
+          "experienceMin",
+          "experienceMax",
+          "education",
+        ].includes(key)
+      ) {
         params.append(key, String(value));
       }
     });
 
     const query = params.toString();
-    return api.get(`/api/matching/job/${jobId}/candidates${query ? `?${query}` : ''}`);
+    return api.get(
+      `/api/matching/job/${jobId}/candidates${query ? `?${query}` : ""}`
+    );
   },
 };
 

@@ -1,36 +1,48 @@
-import React, { useEffect, useCallback } from 'react'
-import { useSearchParams, useNavigate } from 'react-router-dom'
-import SearchBar from '../components/SearchBar.jsx'
-import JobList from '../components/JobList.jsx'
-import JobFiltersSidebar from '../components/JobFiltersSidebar.jsx'
-import SortSelect from '../components/SortSelect.jsx'
-import ActiveFilters from '../components/ActiveFilters.jsx'
-import { useJobsSearch } from '../hooks/useJobs.js'
-import { FEATURES, SEARCH_CONFIG } from '../config.js'
-import './SearchPage.css'
+import React, { useEffect, useCallback } from "react";
+import { useSearchParams, useNavigate } from "react-router-dom";
+import SearchBar from "../components/SearchBar.jsx";
+import JobList from "../components/JobList.jsx";
+import JobFiltersSidebar from "../components/JobFiltersSidebar.jsx";
+import SortSelect from "../components/SortSelect.jsx";
+import ActiveFilters from "../components/ActiveFilters.jsx";
+import { useJobsSearch } from "../hooks/useJobs.js";
+import { searchService } from "../services/searchService.js";
+import { FEATURES, SEARCH_CONFIG } from "../config.js";
+import "./SearchPage.css";
 
 export default function SearchPage() {
-  const [searchParams, setSearchParams] = useSearchParams()
-  const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
 
   // Initialize search state from URL params
   const initialFilters = {
-    q: searchParams.get('q') || '',
-    location: searchParams.get('location') || '',
-    locationId: searchParams.get('locationId') || null,
-    jobType: searchParams.get('jobType') || '',
-    experienceLevel: searchParams.get('experienceLevel') ? parseInt(searchParams.get('experienceLevel')) : null,
-    skills: searchParams.getAll('skills').filter(Boolean) || [],
-    salaryMin: searchParams.get('salaryMin') ? parseInt(searchParams.get('salaryMin')) : null,
-    salaryMax: searchParams.get('salaryMax') ? parseInt(searchParams.get('salaryMax')) : null,
-    jobCategories: searchParams.getAll('jobCategories').filter(Boolean) || [],
-    jobBenefits: searchParams.getAll('jobBenefits').filter(Boolean) || [],
-    remotePercentageMin: searchParams.get('remotePercentageMin') ? parseInt(searchParams.get('remotePercentageMin')) : null,
-    flexibleHours: searchParams.get('flexibleHours') === 'true' ? true : searchParams.get('flexibleHours') === 'false' ? false : null,
-    sort: searchParams.get('sort') || 'relevance',
-    page: parseInt(searchParams.get('page')) || 1,
-    size: 20
-  }
+    q: searchParams.get("q") || "",
+    location: searchParams.get("location") || "",
+    locationId: searchParams.get("locationId") || null,
+    jobType: searchParams.get("jobType") || "",
+    experienceLevel: searchParams.get("experienceLevel")
+      ? parseInt(searchParams.get("experienceLevel"))
+      : null,
+    skills: searchParams.getAll("skills").filter(Boolean) || [],
+    salaryMin: searchParams.get("salaryMin")
+      ? parseInt(searchParams.get("salaryMin"))
+      : undefined,
+    salaryMax: searchParams.get("salaryMax")
+      ? parseInt(searchParams.get("salaryMax"))
+      : undefined,
+    remotePercentageMin: searchParams.get("remotePercentageMin")
+      ? parseInt(searchParams.get("remotePercentageMin"))
+      : null,
+    flexibleHours:
+      searchParams.get("flexibleHours") === "true"
+        ? true
+        : searchParams.get("flexibleHours") === "false"
+        ? false
+        : null,
+    sort: searchParams.get("sort") || "relevance",
+    page: parseInt(searchParams.get("page")) || 1,
+    size: 20,
+  };
 
   // Use the new search hook
   const {
@@ -40,87 +52,261 @@ export default function SearchPage() {
     error,
     total,
     took,
+    cacheHit,
+    cachedAt,
     hasActiveFilters,
     activeFilterCount,
     setFilter,
     setFilters,
     resetFilters,
-    goToPage
-  } = useJobsSearch(initialFilters)
+    applyFilters, // allow explicit trigger when suggestion payload selected
+    goToPage,
+  } = useJobsSearch(initialFilters);
 
-  // Sync URL with search state
-  useEffect(() => {
-    const params = new URLSearchParams()
+  // Search history state
+  const [searchHistory, setSearchHistory] = React.useState(null);
+  const [searchHistoryLoading, setSearchHistoryLoading] = React.useState(false);
 
-    // Add non-empty values to URL
-    if (searchState.q) params.set('q', searchState.q)
-    if (searchState.location) params.set('location', searchState.location)
-    if (searchState.locationId) params.set('locationId', searchState.locationId)
-    if (searchState.jobType) params.set('jobType', searchState.jobType)
-    if (searchState.experienceLevel !== null) params.set('experienceLevel', String(searchState.experienceLevel))
+  // Function to fetch search history (reusable)
+  const fetchSearchHistory = useCallback(async () => {
+    const token = localStorage.getItem("authToken");
+    if (!token || !token.trim()) {
+      setSearchHistoryLoading(false);
+      return;
+    }
 
-    // Handle arrays (skills, categories, benefits)
-    searchState.skills.forEach(skill => params.append('skills', skill))
-    searchState.jobCategories.forEach(category => params.append('jobCategories', category))
-    searchState.jobBenefits.forEach(benefit => params.append('jobBenefits', benefit))
+    try {
+      setSearchHistoryLoading(true);
+      const response = await searchService.getSearchHistory({ limit: 10 });
+      setSearchHistory(response);
+    } catch (error) {
+      console.warn("Failed to fetch search history:", error);
+      setSearchHistory(null);
+    } finally {
+      setSearchHistoryLoading(false);
+    }
+  }, []);
 
-    // Salary range
-    if (searchState.salaryMin !== null) params.set('salaryMin', String(searchState.salaryMin))
-    if (searchState.salaryMax !== null) params.set('salaryMax', String(searchState.salaryMax))
+  // Lấy user context từ search state hoặc localStorage
+  const getUserContext = useCallback(() => {
+    // Từ search state (nếu user đã set preferences)
+    const userContext = {
+      userLocation: searchState.userLocationId || searchState.location,
+      userExperienceLevel: searchState.userExperienceLevel,
+      userSkills: searchState.userSkills || [],
+    };
 
-    // Work arrangement
-    if (searchState.remotePercentageMin !== null) params.set('remotePercentageMin', String(searchState.remotePercentageMin))
-    if (searchState.flexibleHours !== null) params.set('flexibleHours', String(searchState.flexibleHours))
-
-    // Sort and pagination
-    if (searchState.sort !== 'relevance') params.set('sort', searchState.sort)
-    if (searchState.page > 1) params.set('page', String(searchState.page))
-
-    setSearchParams(params)
-  }, [searchState, setSearchParams])
-
-  // Handle search input changes (debounced)
-  const handleSearchChange = useCallback((query) => {
-    setFilter('q', query)
-  }, [setFilter])
-
-  // Handle sort changes
-  const handleSortChange = useCallback((sort) => {
-    setFilter('sort', sort)
-  }, [setFilter])
-
-  // Handle filter changes
-  const handleFilterChange = useCallback((filterKey, value) => {
-    setFilter(filterKey, value)
-  }, [setFilter])
-
-  // Handle removing active filters
-  const handleRemoveFilter = useCallback((filterKey, value) => {
-    setFilter(filterKey, value)
-  }, [setFilter])
-
-  // Handle job click (log impression and navigate)
-  const handleJobClick = useCallback(async (job) => {
-    // Log impression event if analytics is enabled
-    if (FEATURES.ENABLE_ANALYTICS) {
+    // Hoặc từ localStorage nếu có user profile
+    const savedProfile = localStorage.getItem("user_profile");
+    if (savedProfile) {
       try {
-        await searchService.logEvent({
-          event_type: 'impression',
-          job_id: job.id,
-          query: searchState.q,
-          position: results.findIndex(j => j.id === job.id) + 1,
-          filters: searchState,
-          result_count: total,
-          timestamp_ms: Date.now()
-        })
-      } catch (err) {
-        console.warn('Failed to log impression:', err)
+        const profile = JSON.parse(savedProfile);
+        return {
+          userLocation: userContext.userLocation || profile.location,
+          userExperienceLevel:
+            userContext.userExperienceLevel || profile.experienceLevel,
+          userSkills:
+            userContext.userSkills.length > 0
+              ? userContext.userSkills
+              : profile.skills || [],
+        };
+      } catch (e) {
+        console.warn("Failed to parse user profile", e);
       }
     }
 
-    // Navigate to job detail
-    navigate(`/jobs/${job.id}`)
-  }, [results, searchState, total, navigate])
+    return userContext;
+  }, [searchState]);
+
+  const userContext = getUserContext();
+
+  // Fetch search history on mount
+  React.useEffect(() => {
+    fetchSearchHistory();
+  }, [fetchSearchHistory]);
+
+  // Listen for search history updates (triggered after search completes)
+  React.useEffect(() => {
+    const handleHistoryUpdate = () => {
+      // Delay để đợi backend lưu xong
+      setTimeout(() => {
+        fetchSearchHistory();
+      }, 300);
+    };
+
+    window.addEventListener("search-history-updated", handleHistoryUpdate);
+    return () => {
+      window.removeEventListener("search-history-updated", handleHistoryUpdate);
+    };
+  }, [fetchSearchHistory]);
+
+  // Handle removing search history entry
+  const handleRemoveHistoryEntry = useCallback(
+    async (historyId) => {
+      try {
+        await searchService.deleteSearchHistoryEntry(historyId);
+        // Refresh search history
+        fetchSearchHistory();
+      } catch (error) {
+        console.error("Failed to delete search history entry:", error);
+      }
+    },
+    [fetchSearchHistory]
+  );
+
+  // Handle clearing all search history
+  const handleClearAllHistory = useCallback(async () => {
+    try {
+      await searchService.clearSearchHistory();
+      setSearchHistory({
+        history: [],
+        pagination: { total: 0, has_more: false },
+      });
+    } catch (error) {
+      console.error("Failed to clear search history:", error);
+    }
+  }, []);
+
+  // Sync URL with search state
+  useEffect(() => {
+    const params = new URLSearchParams();
+
+    // Add non-empty values to URL
+    if (searchState.q) params.set("q", searchState.q);
+    if (searchState.location) params.set("location", searchState.location);
+    if (searchState.locationId)
+      params.set("locationId", searchState.locationId);
+    if (searchState.jobType) params.set("jobType", searchState.jobType);
+    if (searchState.experienceLevel !== null)
+      params.set("experienceLevel", String(searchState.experienceLevel));
+
+    // Handle arrays (skills)
+    searchState.skills.forEach((skill) => params.append("skills", skill));
+
+    // Salary range
+    if (searchState.salaryMin !== null && searchState.salaryMin !== undefined)
+      params.set("salaryMin", String(searchState.salaryMin));
+    if (searchState.salaryMax !== null && searchState.salaryMax !== undefined)
+      params.set("salaryMax", String(searchState.salaryMax));
+
+    // Work arrangement
+    if (searchState.remotePercentageMin !== null)
+      params.set(
+        "remotePercentageMin",
+        String(searchState.remotePercentageMin)
+      );
+    if (searchState.flexibleHours !== null)
+      params.set("flexibleHours", String(searchState.flexibleHours));
+
+    // Sort and pagination
+    if (searchState.sort !== "relevance") params.set("sort", searchState.sort);
+    if (searchState.page > 1) params.set("page", String(searchState.page));
+
+    setSearchParams(params);
+  }, [searchState, setSearchParams]);
+
+  // Handle search input changes (debounced)
+  const handleSearchChange = useCallback(
+    (query) => {
+      setFilter("q", query);
+    },
+    [setFilter]
+  );
+
+  // Handle structured payload from suggestion (company only - location removed from text search)
+  const handleSuggestionPayload = useCallback(
+    (payload) => {
+      if (!payload) return;
+
+      // Example payload shapes: { company_id } or { location_id } or { location: { id, name } }
+      if (payload.company_id || (payload.company && payload.company.id)) {
+        const companyId = payload.company_id || payload.company.id;
+        // set an arbitrary filter field for company id (backend may read company id if supported)
+        setFilter("companyId", companyId);
+      }
+
+      // Location removed from text search - users should use location filter dropdown instead
+      // if (payload.location_id || (payload.location && payload.location.id)) {
+      //   const locId = payload.location_id || payload.location.id
+      //   setFilter('locationId', locId)
+      //   // try to set human-friendly location text if available
+      //   const locText = payload.location_name || (payload.location && payload.location.name)
+      //   if (locText) setFilter('location', locText)
+      // }
+
+      // Trigger search immediately for selected payload
+      try {
+        applyFilters();
+      } catch (e) {
+        // fallback: nothing
+      }
+    },
+    [setFilter, applyFilters]
+  );
+
+  // Handle sort changes
+  const handleSortChange = useCallback(
+    (sort) => {
+      setFilter("sort", sort);
+    },
+    [setFilter]
+  );
+
+  // Handle filter changes
+  const handleFilterChange = useCallback(
+    (filterKey, value) => {
+      setFilter(filterKey, value);
+    },
+    [setFilter]
+  );
+
+  // Handle removing active filters
+  const handleRemoveFilter = useCallback(
+    (filterKey, value) => {
+      setFilter(filterKey, value);
+    },
+    [setFilter]
+  );
+
+  // Handle clear all search and filters
+  const handleClearAll = useCallback(() => {
+    // Reset search query
+    setFilter("q", "");
+    // Reset location
+    setFilter("location", "");
+    setFilter("locationId", null);
+    // Reset all filters
+    resetFilters();
+    // Reset salary to undefined to use defaults
+    setFilter("salaryMin", undefined);
+    setFilter("salaryMax", undefined);
+  }, [setFilter, resetFilters]);
+
+  // Handle job click (log impression and navigate)
+  const handleJobClick = useCallback(
+    async (job) => {
+      // Log impression event if analytics is enabled
+      if (FEATURES.ENABLE_ANALYTICS) {
+        try {
+          await searchService.logEvent({
+            event_type: "impression",
+            job_id: job.id,
+            query: searchState.q,
+            position: results.findIndex((j) => j.id === job.id) + 1,
+            filters: searchState,
+            result_count: total,
+            timestamp_ms: Date.now(),
+          });
+        } catch (err) {
+          console.warn("Failed to log impression:", err);
+        }
+      }
+
+      // Navigate to job detail
+      navigate(`/search/${job.id}`);
+    },
+    [results, searchState, total, navigate]
+  );
 
   // Clear error after 5 seconds
   useEffect(() => {
@@ -128,33 +314,45 @@ export default function SearchPage() {
       const timer = setTimeout(() => {
         // Note: error clearing would need to be handled in the hook
         // For now, we'll keep it simple
-      }, 5000)
-      return () => clearTimeout(timer)
+      }, 5000);
+      return () => clearTimeout(timer);
     }
-  }, [error])
+  }, [error]);
 
   return (
     <div className="search-page">
       <div className="search-header">
-        <h1>Tìm việc</h1>
+        <div className="header-top">
+          <div className="header-content">
+            <h1>Tìm việc</h1>
+          </div>
+        </div>
         <SearchBar
           value={searchState.q}
           onChange={handleSearchChange}
           placeholder="Tìm kiếm vị trí, công ty, kỹ năng..."
           loading={loading}
           showSuggestions={FEATURES.ENABLE_SEARCH_SUGGESTIONS}
+          onSelectPayload={handleSuggestionPayload}
+          userContext={userContext}
+          onClear={handleClearAll}
+          backendHistory={searchHistory}
+          onRemoveHistoryEntry={handleRemoveHistoryEntry}
+          onClearAllHistory={handleClearAllHistory}
+          searchHistoryLoading={searchHistoryLoading}
+        />
+      </div>
+
+      {/* Horizontal filter bar placed directly under the search header */}
+      <div className="filter-bar">
+        <JobFiltersSidebar
+          filters={searchState}
+          onFilterChange={handleFilterChange}
+          showAdvancedFilters={FEATURES.ENABLE_ADVANCED_SEARCH}
         />
       </div>
 
       <div className="search-content">
-        <aside className="search-sidebar">
-          <JobFiltersSidebar
-            filters={searchState}
-            onFilterChange={handleFilterChange}
-            showAdvancedFilters={FEATURES.ENABLE_ADVANCED_SEARCH}
-          />
-        </aside>
-
         <main className="search-results">
           {FEATURES.ENABLE_ADVANCED_SEARCH && (
             <div className="search-controls">
@@ -170,7 +368,7 @@ export default function SearchPage() {
                   onClick={resetFilters}
                   disabled={loading}
                 >
-                  Xóa tất cả bộ lọc ({activeFilterCount})
+                  Xóa bộ lọc ({activeFilterCount})
                 </button>
               )}
             </div>
@@ -192,6 +390,14 @@ export default function SearchPage() {
                   <span>
                     Tìm thấy {total.toLocaleString()} vị trí
                     {took > 0 && ` trong ${took}ms`}
+                    {cacheHit && (
+                      <span
+                        className="cache-badge"
+                        title={`Cached at ${cachedAt}`}
+                      >
+                        ⚡ Cache
+                      </span>
+                    )}
                   </span>
                 ) : searchState.q || hasActiveFilters ? (
                   <span>Không tìm thấy công việc phù hợp</span>
@@ -222,5 +428,5 @@ export default function SearchPage() {
         </main>
       </div>
     </div>
-  )
+  );
 }

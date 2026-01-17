@@ -10,7 +10,22 @@
   margin-top: 8px;
   max-height: 400px;
   overflow-y: auto;
+  overflow-x: hidden;
   z-index: 1000;
+  animation: slideDown 0.2s ease-out;
+  transform-origin: top center;
+  pointer-events: auto;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 .suggestion-loading {
@@ -167,5 +182,15 @@
 
   .suggestion-loading .spinner {
     animation: none;
+  }
+
+  .suggestion-dropdown {
+    animation: none;
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
   }
 }

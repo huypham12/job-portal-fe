@@ -367,7 +367,7 @@ export default function JobDetailsPage() {
   const highlightTimer = useRef(null)
   const viewTrackedRef = useRef(false)
   const role = getRole()
-  const isSeeker = role === 'seeker'
+  const isSeeker = role === 'candidate'
 
   const fetchJob = useCallback(async () => {
     setLoading(true)
@@ -475,7 +475,7 @@ export default function JobDetailsPage() {
 
   const handleSave = async () => {
     if (!isSeeker) {
-      navigate('/login?role=seeker&redirect=' + encodeURIComponent(window.location.pathname))
+      navigate('/login?role=candidate&redirect=' + encodeURIComponent(window.location.pathname))
       return
     }
 
@@ -487,7 +487,7 @@ export default function JobDetailsPage() {
       setSaved(true)
     } catch (err) {
       if (err?.status === 401) {
-        navigate('/login?role=seeker&redirect=' + encodeURIComponent(window.location.pathname))
+        navigate('/login?role=candidate&redirect=' + encodeURIComponent(window.location.pathname))
       } else {
         alert(err?.message || 'Không thể lưu tin tuyển dụng. Vui lòng thử lại.')
       }
@@ -505,7 +505,7 @@ export default function JobDetailsPage() {
       setSaved(false)
     } catch (err) {
       if (err?.status === 401) {
-        navigate('/login?role=seeker&redirect=' + encodeURIComponent(window.location.pathname))
+        navigate('/login?role=candidate&redirect=' + encodeURIComponent(window.location.pathname))
       } else {
         alert(err?.message || 'Không thể bỏ lưu tin tuyển dụng. Vui lòng thử lại.')
       }
@@ -528,7 +528,7 @@ export default function JobDetailsPage() {
       return
     }
     if (!isSeeker) {
-      navigate('/login?role=seeker&redirect=' + encodeURIComponent(window.location.pathname))
+      navigate('/login?role=candidate&redirect=' + encodeURIComponent(window.location.pathname))
       return
     }
     setShowApply(true)
